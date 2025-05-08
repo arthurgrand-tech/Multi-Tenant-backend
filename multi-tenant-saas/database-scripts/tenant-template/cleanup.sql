@@ -1,1 +1,0 @@
--- Cleanup script for tenant databases

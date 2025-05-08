@@ -1,1 +1,0 @@
--- V2__create_tenant_table.sql content

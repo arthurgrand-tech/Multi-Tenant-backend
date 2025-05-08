@@ -1,1 +1,0 @@
--- 03_sample_data.sql content

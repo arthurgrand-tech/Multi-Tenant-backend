@@ -1,1 +1,0 @@
--- V1__create_admin_schema.sql content

@@ -1,1 +1,0 @@
-// LoginResponse.java content

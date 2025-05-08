@@ -1,1 +1,0 @@
--- V3__create_user_tables.sql content

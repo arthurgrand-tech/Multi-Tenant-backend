@@ -1,1 +1,0 @@
-// DatabaseProperties.java content

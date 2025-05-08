@@ -1,1 +1,0 @@
--- 04_create_client_tables.sql content

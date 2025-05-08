@@ -1,1 +1,0 @@
--- 02_create_employee_tables.sql content

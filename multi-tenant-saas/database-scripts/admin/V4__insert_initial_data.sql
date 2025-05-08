@@ -1,1 +1,0 @@
--- V4__insert_initial_data.sql content

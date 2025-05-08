@@ -1,1 +1,0 @@
--- 01_create_user_tables.sql content
