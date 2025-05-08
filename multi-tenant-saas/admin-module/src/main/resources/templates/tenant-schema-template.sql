@@ -1,0 +1,1 @@
+-- Tenant schema template SQL

@@ -1,0 +1,1 @@
+-- 05_create_relationships.sql content

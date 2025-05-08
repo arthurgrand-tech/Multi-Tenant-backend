@@ -1,0 +1,1 @@
+-- 01_roles_and_permissions.sql content

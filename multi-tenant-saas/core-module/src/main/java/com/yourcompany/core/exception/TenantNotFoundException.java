@@ -1,0 +1,1 @@
+// TenantNotFoundException.java content

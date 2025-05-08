@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  mysql:
+    build:
+      context: ./mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: admin_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  api-gateway:
+    build:
+      context: ../api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - auth-service
+      - admin-service
+
+  auth-service:
+    build:
+      context: ../auth-module
+    depends_on:
+      - mysql
+
+  admin-service:
+    build:
+      context: ../admin-module
+    depends_on:
+      - mysql
+
+  timesheet-service:
+    build:
+      context: ../timesheet-module
+    depends_on:
+      - mysql
+
+  employee-service:
+    build:
+      context: ../employee-module
+    depends_on:
+      - mysql
+
+  client-service:
+    build:
+      context: ../client-module
+    depends_on:
+      - mysql
+
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  mysql-data:

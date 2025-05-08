@@ -1,0 +1,1 @@
+-- Default data template SQL

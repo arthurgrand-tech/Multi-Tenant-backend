@@ -1,0 +1,1 @@
+-- 02_default_settings.sql content

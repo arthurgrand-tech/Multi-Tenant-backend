@@ -1,0 +1,1 @@
+// DatabaseConnectionException.java content
