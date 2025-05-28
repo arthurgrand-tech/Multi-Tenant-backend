@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -39,15 +39,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDto request) {
         try {
-            Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmailid(), request.getPassword())
-            );
-
             Optional<Employee> employeeOpt=employeeRepository.findByEmailid(request.getEmailid());
             if(employeeOpt.isEmpty()){
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Email not found");
             }
+            Authentication auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmailid(), request.getPassword())
+            );
+
             final String jwt = jwtUtil.generateToken(employeeOpt.get());
 
             return ResponseEntity.ok(new JwtResponse(jwt, employeeOpt.get().getEmailid()));

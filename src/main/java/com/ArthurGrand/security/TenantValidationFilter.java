@@ -3,6 +3,7 @@ package com.ArthurGrand.security;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
 import com.ArthurGrand.admin.tenants.repository.TenantRepository;
+import com.ArthurGrand.common.component.TenantStatusValidator;
 import com.ArthurGrand.common.enums.TenantStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,9 +19,12 @@ import java.util.Optional;
 public class TenantValidationFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
+    private final TenantStatusValidator tenantStatusValidator;
 
-    public TenantValidationFilter(TenantRepository tenantRepository) {
+    public TenantValidationFilter(TenantRepository tenantRepository,
+                                  TenantStatusValidator tenantStatusValidator) {
         this.tenantRepository = tenantRepository;
+        this.tenantStatusValidator=tenantStatusValidator;
     }
 
     @Override
@@ -67,11 +71,9 @@ public class TenantValidationFilter extends OncePerRequestFilter {
 
         Tenant tenant = optionalTenant.get();
 
-        if (tenant.getStatus() != TenantStatus.ACTIVE) {
-            handleException(response, "Tenant is not active", HttpServletResponse.SC_FORBIDDEN);
+        if (!tenantStatusValidator.validate(tenant, response)) {
             return;
         }
-
         // *** Set TenantContext using tenantId (string) — this must match MultiTenantDataSource key ***
         TenantContext.setCurrentTenant(tenant.getDatabaseName());
 
