@@ -24,7 +24,7 @@ public class TenantValidationFilter extends OncePerRequestFilter {
     public TenantValidationFilter(TenantRepository tenantRepository,
                                   TenantStatusValidator tenantStatusValidator) {
         this.tenantRepository = tenantRepository;
-        this.tenantStatusValidator=tenantStatusValidator;
+        this.tenantStatusValidator = tenantStatusValidator;
     }
 
     @Override
@@ -34,60 +34,85 @@ public class TenantValidationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
+        System.out.println("🔍 Processing request: " + path);
 
-        // Skip tenant validation for Swagger UI and API docs
-        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.equals("/swagger-ui.html")) {
+        // Skip tenant validation for Swagger and tenant creation
+        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")
+                || path.equals("/swagger-ui.html")
+                || path.startsWith("/api/v1/tenants/createTenant")) {
+            System.out.println("⏭️  Skipping tenant validation for path: " + path);
             filterChain.doFilter(request, response);
             return;
         }
 
-        String userType = request.getHeader("X-User-Type"); // e.g. MASTER or TENANT
+        String userType = request.getHeader("X-User-Type");
+        String tenantId = request.getHeader("X-Tenant-ID");
+
+        System.out.println("🔍 User-Type: " + userType);
+        System.out.println("🔍 Tenant-ID: " + tenantId);
 
         if (userType == null || userType.isEmpty()) {
+            System.out.println("❌ X-User-Type header is missing");
             handleException(response, "X-User-Type header is missing", HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
+        // Master user — allow request but do NOT set tenant context
         if ("MASTER".equalsIgnoreCase(userType)) {
-            // MASTER user — allow all requests without tenant check
+            System.out.println("👑 Master user detected - no tenant context will be set");
             filterChain.doFilter(request, response);
             return;
         }
 
-        // For other users (e.g. TENANT), tenant id is mandatory
-        String tenantId = request.getHeader("X-Tenant-ID");
+        // Tenant user — tenant ID is required
         if (tenantId == null || tenantId.isEmpty()) {
+            System.out.println("❌ Tenant ID is missing for non-master user");
             handleException(response, "Tenant ID is missing for non-master user", HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
-        // Validate tenant id exists and is active
+        // 🚫 Block clients from accessing the master DB directly
+        if ("master".equalsIgnoreCase(tenantId)) {
+            System.out.println("🚫 Blocked attempt to access master database via tenant header");
+            handleException(response, "Access to master database via tenant header is forbidden", HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
+        System.out.println("🔍 Looking for tenant with domain: " + tenantId);
         Optional<Tenant> optionalTenant = tenantRepository.findByDomain(tenantId);
+        System.out.println("🔍 Tenant found: " + optionalTenant.isPresent());
 
         if (optionalTenant.isEmpty()) {
+            System.out.println("❌ No tenant found for domain: " + tenantId);
             handleException(response, "Tenant not found", HttpServletResponse.SC_NOT_FOUND);
             return;
         }
 
         Tenant tenant = optionalTenant.get();
+        System.out.println("🔍 Found tenant: " + tenant.getCompanyName() + " (ID: " + tenant.getId() + ")");
+        System.out.println("🔍 Tenant database name: " + tenant.getDatabaseName());
+        System.out.println("🔍 Tenant status: " + tenant.getStatus());
 
         if (!tenantStatusValidator.validate(tenant, response)) {
+            System.out.println("❌ Tenant validation failed for: " + tenant.getDatabaseName());
             return;
         }
-        // *** Set TenantContext using tenantId (string) — this must match MultiTenantDataSource key ***
+
+        // ✅ Set tenant context using database name
+        System.out.println("✅ Setting tenant context to: " + tenant.getDatabaseName());
         TenantContext.setCurrentTenant(tenant.getDatabaseName());
 
-        System.out.println("TenantContext set to tenantId: " + tenantId);
-        System.out.println("Tenant ID set in context: " + TenantContext.getCurrentTenant());
-
         try {
+            System.out.println("🔄 Proceeding with request for tenant: " + tenant.getDatabaseName());
             filterChain.doFilter(request, response);
         } finally {
-            TenantContext.clear(); // Always clear the context to avoid leakage
+            System.out.println("🧹 Clearing tenant context for: " + tenant.getDatabaseName());
+            TenantContext.clear(); // Always clear after the request
         }
     }
 
     private void handleException(HttpServletResponse response, String message, int status) throws IOException {
+        System.out.println("💥 Exception: " + message + " (Status: " + status + ")");
         response.setStatus(status);
         response.setContentType("application/json");
         response.getWriter().write("{\"error\": \"" + message + "\"}");

@@ -1,12 +1,16 @@
 package com.ArthurGrand.admin.tenants.serviceImp;
 
-import com.ArthurGrand.admin.dto.TenantCreateDto;
+import com.ArthurGrand.admin.dto.TenantRegisterDto;
 import com.ArthurGrand.admin.dto.TenantResponseDto;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
+import com.ArthurGrand.admin.tenants.entity.TenantProfile;
+import com.ArthurGrand.admin.tenants.repository.TenantProfileRepository;
 import com.ArthurGrand.admin.tenants.repository.TenantRepository;
 import com.ArthurGrand.admin.tenants.service.TenantService;
+import com.ArthurGrand.common.enums.TenantStatus;
 import com.ArthurGrand.common.exception.TenantNotFoundException;
 import com.ArthurGrand.config.DatabaseConfiguration;
+import jakarta.transaction.Transactional;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.modelmapper.ModelMapper;
@@ -25,65 +29,173 @@ public class TenantServiceImp implements TenantService {
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
+    @Value("${spring.datasource.url}")
+    private String dbUrl;
+
     private final JdbcTemplate jdbcTemplate;
     private final DatabaseConfiguration databaseConfiguration;
     private final TenantRepository tenantRepository;
     private final ModelMapper modelMapper;
+    private final TenantProfileRepository tenantProfileRepository;
 
     public TenantServiceImp(JdbcTemplate jdbcTemplate,
                             DatabaseConfiguration databaseConfiguration,
                             TenantRepository tenantRepository,
-                            ModelMapper modelMapper) {
+                            ModelMapper modelMapper,
+                            TenantProfileRepository tenantProfileRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.databaseConfiguration = databaseConfiguration;
         this.tenantRepository = tenantRepository;
         this.modelMapper = modelMapper;
+        this.tenantProfileRepository=tenantProfileRepository;
     }
 
+//    @Override
+//    @Transactional
+//    public TenantResponseDto createTenant(TenantRegisterDto tenantRegisterDto) throws IllegalArgumentException {
+//        try {
+//            // Uniqueness checks
+//            if (tenantRepository.findByDomain(tenantRegisterDto.getDomain()).isPresent()) {
+//                throw new IllegalArgumentException("Domain already exists.");
+//            }
+//
+//            if (tenantRepository.findByCompanyName(tenantRegisterDto.getCompanyName()).isPresent()) {
+//                throw new IllegalArgumentException("Company name already exists.");
+//            }
+//
+//            if (tenantRepository.findByDatabaseName(tenantRegisterDto.getDomain()).isPresent()) {
+//                throw new IllegalArgumentException("Database name already exists.");
+//            }
+//
+//            if (tenantRepository.findByAdminEmail(tenantRegisterDto.getAdminEmail()).isPresent()) {
+//                throw new IllegalArgumentException("Admin email already exists.");
+//            }
+//
+//            // Create tenant metadata
+//            Tenant tenant = modelMapper.map(tenantRegisterDto, Tenant.class);
+//            tenant.setDatabaseName(tenantRegisterDto.getDomain()); // Assuming databaseName = domain
+//            // Save metadata
+//            Tenant savedTenant = tenantRepository.save(tenant);
+//            return modelMapper.map(savedTenant, TenantResponseDto.class);
+//
+//        } catch (IllegalArgumentException e) {
+//            throw e; // propagate to controller
+//        } catch (Exception e) {
+//            throw new IllegalStateException("Tenant creation failed: " + e.getMessage(), e);
+//        }
+//    }
+
     @Override
-    public TenantResponseDto createTenant(TenantCreateDto tenantCreateDto) throws IllegalArgumentException {
+    @Transactional
+    public TenantResponseDto createTenant(TenantRegisterDto tenantRegisterDto) throws IllegalArgumentException {
         try {
             // Uniqueness checks
-            if (tenantRepository.findByDomain(tenantCreateDto.getDomain()).isPresent()) {
+            if (tenantRepository.findByDomain(tenantRegisterDto.getDomain()).isPresent()) {
                 throw new IllegalArgumentException("Domain already exists.");
             }
-
-            if (tenantRepository.findByCompanyName(tenantCreateDto.getCompanyName()).isPresent()) {
+            if (tenantRepository.findByCompanyName(tenantRegisterDto.getCompanyName()).isPresent()) {
                 throw new IllegalArgumentException("Company name already exists.");
             }
-
-            if (tenantRepository.findByDatabaseName(tenantCreateDto.getDatabaseName()).isPresent()) {
+            if (tenantRepository.findByDatabaseName(tenantRegisterDto.getDomain()).isPresent()) {
                 throw new IllegalArgumentException("Database name already exists.");
             }
-
-            if (tenantRepository.findByAdminEmail(tenantCreateDto.getAdminEmail()).isPresent()) {
+            if (tenantRepository.findByAdminEmail(tenantRegisterDto.getAdminEmail()).isPresent()) {
                 throw new IllegalArgumentException("Admin email already exists.");
             }
 
-            // Create tenant metadata
-            Tenant tenant = modelMapper.map(tenantCreateDto, Tenant.class);
-
-            // Create tenant database
-            createTenantDatabase(tenant.getDatabaseName());
-
-            // Construct a clean JDBC URL
-            String tenantUrl = "jdbc:mysql://localhost/" + tenant.getDatabaseName() + "?serverTimezone=UTC&useSSL=false";
-
-            // Register tenant in multi-tenant configuration
-            databaseConfiguration.addTenant(tenant.getDatabaseName(), tenantUrl, dbUsername, dbPassword);
-
-            // Run Flyway migration
-            migrateTenantSchema(tenantUrl, dbUsername, dbPassword);
-
-            // Save metadata
+            // Manually map DTO to Tenant
+            Tenant tenant = new Tenant();
+            tenant.setDomain(tenantRegisterDto.getDomain());
+            tenant.setCompanyName(tenantRegisterDto.getCompanyName());
+            tenant.setAdminEmail(tenantRegisterDto.getAdminEmail());
+            tenant.setUsesCustomDb(tenantRegisterDto.getUsesCustomDb());
+            tenant.setDbHost(tenantRegisterDto.getDbHost());
+            tenant.setDbPort(tenantRegisterDto.getDbPort());
+            tenant.setDbUsername(tenantRegisterDto.getDbUsername());
+            tenant.setDbPassword(tenantRegisterDto.getDbPassword());
+            tenant.setDatabaseName(tenantRegisterDto.getDomain()); // Use domain as DB name
+            tenant.setTimezone(tenantRegisterDto.getTimezone());
+            tenant.setCountry(tenantRegisterDto.getCountry());
             Tenant savedTenant = tenantRepository.save(tenant);
-            return modelMapper.map(savedTenant, TenantResponseDto.class);
+
+            TenantResponseDto tenantResDto = modelMapper.map(savedTenant, TenantResponseDto.class);
+
+            TenantProfile tenantProfile= new TenantProfile();
+            tenantProfile.setTenant(savedTenant);
+            tenantProfile.setContactPerson(tenantRegisterDto.getContactPerson());
+            tenantProfile.setEmail(tenantRegisterDto.getAdminEmail());
+            tenantProfile.setPhoneNumber(tenantRegisterDto.getPhoneNumber());
+            tenantProfile.setAddress(tenantRegisterDto.getAddress());
+            tenantProfile.setWebsite(tenantRegisterDto.getWebsite());
+            tenantProfileRepository.save(tenantProfile);
+
+            return tenantResDto;
 
         } catch (IllegalArgumentException e) {
-            throw e; // propagate to controller
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Tenant creation failed: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    @Transactional
+    public TenantResponseDto activateTenant(Long tenantId) {
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Tenant not found"));
+
+        if (tenant.getStatus() == TenantStatus.ACTIVE) {
+            throw new IllegalStateException("Tenant is already active");
+        }
+
+        try {
+            // Check if DB exists (implement your own logic here)
+            boolean dbExists = checkIfDatabaseExists(tenant.getDatabaseName());
+
+            if (!dbExists) {
+                createTenantDatabase(tenant.getDatabaseName());
+            }
+
+            String tenantUrl = buildJdbcUrl(tenant);
+            //String tenantUrl = tenant.getJdbcUrl("localhost", 3306); // fallback to provider's DB
+
+            String username = tenant.isUsesCustomDb() ? tenant.getDbUsername() : dbUsername;
+            String password = tenant.isUsesCustomDb() ? tenant.getDbPassword() : dbPassword;
+
+            databaseConfiguration.addTenant(tenant.getDatabaseName(), tenantUrl, username, password);
+            migrateTenantSchema(tenantUrl, username, password);
+
+            // Update status to ACTIVE
+            tenant.setStatus(TenantStatus.ACTIVE);
+            tenantRepository.save(tenant);
+
+            return modelMapper.map(tenant, TenantResponseDto.class);
+
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to activate tenant: " + e.getMessage(), e);
+        }
+    }
+
+    public boolean checkIfDatabaseExists(String dbName) {
+        String sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?";
+        List<String> result = jdbcTemplate.queryForList(sql, String.class, dbName);
+        return !result.isEmpty();
+    }
+
+    //    public String buildJdbcUrl(Tenant tenant) {
+//        if(tenant.isUsesCustomDb()){
+//            String host =  tenant.getDbHost(); // or externalize localhost/port
+//            int port = tenant.getDbPort();
+//            return "jdbc:mysql://" + host + ":" + port + "/" + tenant.getDatabaseName()
+//                    + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+//        }
+//        return dbUrl;
+//    }
+    public String buildJdbcUrl(Tenant tenant) {
+        String host = tenant.isUsesCustomDb() ? tenant.getDbHost() : "localhost";
+        int port = tenant.isUsesCustomDb() ? tenant.getDbPort() : 3306;
+        return "jdbc:mysql://" + host + ":" + port + "/" + tenant.getDatabaseName()
+                + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
     }
 
     private void createTenantDatabase(String databaseName) {

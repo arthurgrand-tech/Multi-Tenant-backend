@@ -12,8 +12,11 @@ public class TenantResponseDto  {
     private Long id;
     private String domain;
     private String companyName;
-    private String databaseName;
     private String adminEmail;
+    private Boolean usesCustomDb;
+    private String databaseName;
+    private String timezone;
+    private String country;
     private TenantStatus status;
     private Instant createdAt;
     private Instant updatedAt;

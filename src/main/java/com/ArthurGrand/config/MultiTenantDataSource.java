@@ -18,7 +18,7 @@ public class MultiTenantDataSource extends AbstractRoutingDataSource {
         System.out.println("Routing to tenant: " + tenant);
         System.out.println("Current lookup key: " + TenantContext.getCurrentTenant());
 
-        return tenant != null ? tenant : "master_db";
+        return tenant != null ? tenant : "master";
     }
 
     public Map<Object, DataSource> getResolvedDataSources() {
