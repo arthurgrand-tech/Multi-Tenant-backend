@@ -75,7 +75,6 @@ public class TenantServiceImp implements TenantService {
             if (tenantRepository.findByAdminEmail(tenantRegisterDto.getAdminEmail()).isPresent()) {
                 throw new IllegalArgumentException("Admin email already exists.");
             }
-
             // Manually map DTO to Tenant
             Tenant tenant = new Tenant();
             tenant.setDomain(tenantRegisterDto.getDomain());
