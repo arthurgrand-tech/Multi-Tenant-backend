@@ -10,15 +10,20 @@ import com.ArthurGrand.admin.tenants.service.TenantService;
 import com.ArthurGrand.common.enums.TenantStatus;
 import com.ArthurGrand.common.exception.TenantNotFoundException;
 import com.ArthurGrand.config.DatabaseConfiguration;
+import com.ArthurGrand.dto.EmailCategory;
+import com.ArthurGrand.dto.EmailTemplateBindingDTO;
+import com.ArthurGrand.module.notification.events.NotificationEvent;
 import jakarta.transaction.Transactional;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TenantServiceImp implements TenantService {
@@ -37,53 +42,21 @@ public class TenantServiceImp implements TenantService {
     private final TenantRepository tenantRepository;
     private final ModelMapper modelMapper;
     private final TenantProfileRepository tenantProfileRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public TenantServiceImp(JdbcTemplate jdbcTemplate,
                             DatabaseConfiguration databaseConfiguration,
                             TenantRepository tenantRepository,
                             ModelMapper modelMapper,
-                            TenantProfileRepository tenantProfileRepository) {
+                            TenantProfileRepository tenantProfileRepository,
+                            ApplicationEventPublisher eventPublisher) {
         this.jdbcTemplate = jdbcTemplate;
         this.databaseConfiguration = databaseConfiguration;
         this.tenantRepository = tenantRepository;
         this.modelMapper = modelMapper;
         this.tenantProfileRepository=tenantProfileRepository;
+        this.eventPublisher=eventPublisher;
     }
-
-//    @Override
-//    @Transactional
-//    public TenantResponseDto createTenant(TenantRegisterDto tenantRegisterDto) throws IllegalArgumentException {
-//        try {
-//            // Uniqueness checks
-//            if (tenantRepository.findByDomain(tenantRegisterDto.getDomain()).isPresent()) {
-//                throw new IllegalArgumentException("Domain already exists.");
-//            }
-//
-//            if (tenantRepository.findByCompanyName(tenantRegisterDto.getCompanyName()).isPresent()) {
-//                throw new IllegalArgumentException("Company name already exists.");
-//            }
-//
-//            if (tenantRepository.findByDatabaseName(tenantRegisterDto.getDomain()).isPresent()) {
-//                throw new IllegalArgumentException("Database name already exists.");
-//            }
-//
-//            if (tenantRepository.findByAdminEmail(tenantRegisterDto.getAdminEmail()).isPresent()) {
-//                throw new IllegalArgumentException("Admin email already exists.");
-//            }
-//
-//            // Create tenant metadata
-//            Tenant tenant = modelMapper.map(tenantRegisterDto, Tenant.class);
-//            tenant.setDatabaseName(tenantRegisterDto.getDomain()); // Assuming databaseName = domain
-//            // Save metadata
-//            Tenant savedTenant = tenantRepository.save(tenant);
-//            return modelMapper.map(savedTenant, TenantResponseDto.class);
-//
-//        } catch (IllegalArgumentException e) {
-//            throw e; // propagate to controller
-//        } catch (Exception e) {
-//            throw new IllegalStateException("Tenant creation failed: " + e.getMessage(), e);
-//        }
-//    }
 
     @Override
     @Transactional
@@ -127,8 +100,26 @@ public class TenantServiceImp implements TenantService {
             tenantProfile.setPhoneNumber(tenantRegisterDto.getPhoneNumber());
             tenantProfile.setAddress(tenantRegisterDto.getAddress());
             tenantProfile.setWebsite(tenantRegisterDto.getWebsite());
-            tenantProfileRepository.save(tenantProfile);
+            TenantProfile savedTenantProfile=tenantProfileRepository.save(tenantProfile);
 
+            // After saving tenant and profile
+            EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+            binding.setContactPerson(savedTenantProfile.getContactPerson());
+            binding.setOrganizationName(savedTenant.getCompanyName());
+            binding.setDomain(savedTenant.getDomain());
+            binding.setAdminEmail(savedTenantProfile.getEmail());
+            binding.setPageUrl("http://localhost:5000/" + savedTenant.getDomain() + "/login");
+
+            // Publish event (this will be handled asynchronously)
+            eventPublisher.publishEvent(new NotificationEvent(
+                    savedTenant.getId(),
+                    savedTenant.getAdminEmail(),
+                    "Tenant Registration",
+                    "Tenant registration successful.",
+                    "tenant-created",
+                    binding,
+                    EmailCategory.TenantCreate
+            ));
             return tenantResDto;
 
         } catch (IllegalArgumentException e) {
@@ -167,10 +158,26 @@ public class TenantServiceImp implements TenantService {
 
             // Update status to ACTIVE
             tenant.setStatus(TenantStatus.ACTIVE);
-            tenantRepository.save(tenant);
+            Tenant savedTenant=tenantRepository.save(tenant);
+            Optional<TenantProfile> tenantProfileOpt=tenantProfileRepository.findByTenantId(savedTenant.getId());
 
+            // After saving tenant and profile
+            EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+            binding.setOrganizationName(savedTenant.getCompanyName());
+            binding.setContactPerson(tenantProfileOpt.get().getContactPerson());
+            binding.setPageUrl("http://localhost:5000/");
+
+            // Publish event (this will be handled asynchronously)
+            eventPublisher.publishEvent(new NotificationEvent(
+                    savedTenant.getId(),
+                    savedTenant.getAdminEmail(),
+                    "Tenant Activation",
+                    "Tenant activation successful.",
+                    "tenant-activate",
+                    binding,
+                    EmailCategory.TenantActive
+            ));
             return modelMapper.map(tenant, TenantResponseDto.class);
-
         } catch (Exception e) {
             throw new IllegalStateException("Failed to activate tenant: " + e.getMessage(), e);
         }
@@ -182,15 +189,6 @@ public class TenantServiceImp implements TenantService {
         return !result.isEmpty();
     }
 
-    //    public String buildJdbcUrl(Tenant tenant) {
-//        if(tenant.isUsesCustomDb()){
-//            String host =  tenant.getDbHost(); // or externalize localhost/port
-//            int port = tenant.getDbPort();
-//            return "jdbc:mysql://" + host + ":" + port + "/" + tenant.getDatabaseName()
-//                    + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
-//        }
-//        return dbUrl;
-//    }
     public String buildJdbcUrl(Tenant tenant) {
         String host = tenant.isUsesCustomDb() ? tenant.getDbHost() : "localhost";
         int port = tenant.isUsesCustomDb() ? tenant.getDbPort() : 3306;
