@@ -1,5 +1,6 @@
 package com.ArthurGrand.security;
 
+import com.ArthurGrand.admin.dto.TenantSession;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
 import com.ArthurGrand.admin.tenants.repository.TenantRepository;
@@ -9,6 +10,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -20,11 +22,14 @@ public class TenantValidationFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
     private final TenantStatusValidator tenantStatusValidator;
+    private final ModelMapper modelMapper;
 
     public TenantValidationFilter(TenantRepository tenantRepository,
-                                  TenantStatusValidator tenantStatusValidator) {
+                                  TenantStatusValidator tenantStatusValidator,
+                                  ModelMapper modelMapper) {
         this.tenantRepository = tenantRepository;
         this.tenantStatusValidator = tenantStatusValidator;
+        this.modelMapper=modelMapper;
     }
 
     @Override
@@ -102,6 +107,7 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         System.out.println("✅ Setting tenant context to: " + tenant.getDatabaseName());
         TenantContext.setCurrentTenant(tenant.getDatabaseName());
 
+        TenantContext.setTenantInfo(modelMapper.map(tenant, TenantSession.class));
         try {
             System.out.println("🔄 Proceeding with request for tenant: " + tenant.getDatabaseName());
             filterChain.doFilter(request, response);
