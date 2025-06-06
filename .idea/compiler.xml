@@ -16,6 +16,7 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
         </processorPath>
         <module name="timesheet" />
+        <module name="Multi-Tenant-backend" />
       </profile>
     </annotationProcessing>
   </component>

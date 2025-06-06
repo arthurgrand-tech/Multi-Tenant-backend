@@ -8,7 +8,7 @@ import org.springframework.web.SpringServletContainerInitializer;
 
 @SpringBootApplication
 @EnableScheduling
-//@EnableCaching
+@EnableCaching
 public class TimesheetApplication extends SpringServletContainerInitializer {
 
     public static void main(String[] args) {

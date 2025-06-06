@@ -4,6 +4,7 @@ import com.ArthurGrand.admin.dto.UserSessionDto;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
 import com.ArthurGrand.admin.tenants.repository.TenantRepository;
+import com.ArthurGrand.admin.tenants.serviceImp.TenantCacheService;
 import com.ArthurGrand.common.component.TenantStatusValidator;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,16 +20,17 @@ import java.util.Optional;
 @Component
 public class TenantValidationFilter extends OncePerRequestFilter {
 
-    private final TenantRepository tenantRepository;
     private final TenantStatusValidator tenantStatusValidator;
     private final ModelMapper modelMapper;
+    private final TenantCacheService tenantCacheService;
 
-    public TenantValidationFilter(TenantRepository tenantRepository,
+    public TenantValidationFilter(
                                   TenantStatusValidator tenantStatusValidator,
-                                  ModelMapper modelMapper) {
-        this.tenantRepository = tenantRepository;
+                                  ModelMapper modelMapper,
+                                  TenantCacheService tenantCacheService) {
         this.tenantStatusValidator = tenantStatusValidator;
         this.modelMapper=modelMapper;
+        this.tenantCacheService=tenantCacheService;
     }
 
     @Override
@@ -83,7 +85,7 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         }
 
         System.out.println("🔍 Looking for tenant with domain: " + tenantId);
-        Optional<Tenant> optionalTenant = tenantRepository.findByDomain(tenantId);
+        Optional<Tenant> optionalTenant = tenantCacheService.getTenantByDomain(tenantId);
         System.out.println("🔍 Tenant found: " + optionalTenant.isPresent());
 
         if (optionalTenant.isEmpty()) {

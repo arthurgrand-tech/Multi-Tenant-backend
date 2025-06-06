@@ -43,19 +43,22 @@ public class TenantServiceImp implements TenantService {
     private final ModelMapper modelMapper;
     private final TenantProfileRepository tenantProfileRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final TenantCacheService tenantCacheService;
 
     public TenantServiceImp(JdbcTemplate jdbcTemplate,
                             DatabaseConfiguration databaseConfiguration,
                             TenantRepository tenantRepository,
                             ModelMapper modelMapper,
                             TenantProfileRepository tenantProfileRepository,
-                            ApplicationEventPublisher eventPublisher) {
+                            ApplicationEventPublisher eventPublisher,
+                            TenantCacheService tenantCacheService) {
         this.jdbcTemplate = jdbcTemplate;
         this.databaseConfiguration = databaseConfiguration;
         this.tenantRepository = tenantRepository;
         this.modelMapper = modelMapper;
         this.tenantProfileRepository=tenantProfileRepository;
         this.eventPublisher=eventPublisher;
+        this.tenantCacheService=tenantCacheService;
     }
 
     @Override
@@ -158,6 +161,9 @@ public class TenantServiceImp implements TenantService {
             // Update status to ACTIVE
             tenant.setStatus(TenantStatus.ACTIVE);
             Tenant savedTenant=tenantRepository.save(tenant);
+
+            tenantCacheService.updateTenantCache(savedTenant); // 🔁 manually update cache
+
             Optional<TenantProfile> tenantProfileOpt=tenantProfileRepository.findByTenant_TenantId(savedTenant.getTenantId());
 
             // After saving tenant and profile
