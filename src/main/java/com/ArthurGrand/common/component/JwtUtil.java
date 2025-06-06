@@ -23,6 +23,8 @@ public class JwtUtil {
     public String generateToken(Employee employee) {
         return Jwts.builder()
                 .setSubject(employee.getEmailid())
+                .claim("employeeId",employee.getEmployeeId())
+                .claim("email",employee.getEmailid())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtConfig.getExpirationMs()))
                 .signWith(signingKey, SignatureAlgorithm.HS256)

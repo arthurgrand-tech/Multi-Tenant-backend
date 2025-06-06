@@ -27,7 +27,7 @@ public class NotificationServiceImp implements NotificationService {
 
     @Override
     @Async("notificationExecutor")
-    public CompletableFuture<Void> sendNotification(String email, Long tenantId, String subject,
+    public CompletableFuture<Void> sendNotification(String email, int tenantId, String subject,
                                                     String message, String emailTemplate,
                                                     EmailTemplateBindingDTO binding) {
         try {
@@ -54,6 +54,8 @@ public class NotificationServiceImp implements NotificationService {
             return CompletableFuture.failedFuture(e);
         }
     }
+
+
 
     @EventListener
     @Async("notificationExecutor")

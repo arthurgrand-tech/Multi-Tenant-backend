@@ -130,7 +130,7 @@ public class TenantServiceImp implements TenantService {
 
     @Override
     @Transactional
-    public TenantResponseDto activateTenant(Long tenantId) {
+    public TenantResponseDto activateTenant(int tenantId) {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Tenant not found"));
 

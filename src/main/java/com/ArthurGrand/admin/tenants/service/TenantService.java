@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface TenantService {
     public TenantResponseDto createTenant(TenantRegisterDto tenantRegisterDto) throws Exception;
-    public TenantResponseDto activateTenant(Long tenantId);
+    public TenantResponseDto activateTenant(int tenantId);
     public TenantResponseDto getTenantByEmail(String email) throws Exception;
     public TenantResponseDto getTenantByDomain(String domain) throws Exception;
     public List<TenantResponseDto> getAllTenants() throws Exception;

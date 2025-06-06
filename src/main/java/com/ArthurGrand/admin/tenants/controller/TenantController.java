@@ -31,7 +31,7 @@ public class TenantController {
     }
 
     @PutMapping("/{tenantId}/activate")
-    public ResponseEntity<?> activateTenant(@PathVariable Long tenantId) {
+    public ResponseEntity<?> activateTenant(@PathVariable int tenantId) {
         try {
             TenantResponseDto response = tenantService.activateTenant(tenantId);
             return ResponseEntity.ok()

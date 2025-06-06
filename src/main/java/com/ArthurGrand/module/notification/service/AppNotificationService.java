@@ -1,5 +1,5 @@
 package com.ArthurGrand.module.notification.service;
 
 public interface AppNotificationService {
-    void sendAppNotification(Long tenantId, String message);
+    void sendAppNotification(int tenantId, String message);
 }

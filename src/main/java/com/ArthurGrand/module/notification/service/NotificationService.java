@@ -7,7 +7,7 @@ import java.util.concurrent.CompletableFuture;
 
 public interface NotificationService {
     // Updated method signature to return CompletableFuture<Void>
-    CompletableFuture<Void> sendNotification(String email, Long tenantId, String subject,
+    CompletableFuture<Void> sendNotification(String email, int tenantId, String subject,
                                              String message, String emailTemplate,
                                              EmailTemplateBindingDTO binding);
 

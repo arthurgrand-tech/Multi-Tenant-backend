@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface TenantRepository extends JpaRepository<Tenant,Long> {
+public interface TenantRepository extends JpaRepository<Tenant,Integer> {
     Optional<Tenant> findByDomain(String domain);
     Optional<Tenant> findByCompanyName(String companyName);
     Optional<Tenant> findByDatabaseName(String databaseName);
