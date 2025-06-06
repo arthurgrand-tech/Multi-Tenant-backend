@@ -111,7 +111,7 @@ public class TenantServiceImp implements TenantService {
 
             // Publish event (this will be handled asynchronously)
             eventPublisher.publishEvent(new NotificationEvent(
-                    savedTenant.getId(),
+                    savedTenant.getTenantId(),
                     savedTenant.getAdminEmail(),
                     "Tenant Registration",
                     "Tenant registration successful.",
@@ -158,7 +158,7 @@ public class TenantServiceImp implements TenantService {
             // Update status to ACTIVE
             tenant.setStatus(TenantStatus.ACTIVE);
             Tenant savedTenant=tenantRepository.save(tenant);
-            Optional<TenantProfile> tenantProfileOpt=tenantProfileRepository.findByTenantId(savedTenant.getId());
+            Optional<TenantProfile> tenantProfileOpt=tenantProfileRepository.findByTenant_TenantId(savedTenant.getTenantId());
 
             // After saving tenant and profile
             EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
@@ -168,7 +168,7 @@ public class TenantServiceImp implements TenantService {
 
             // Publish event (this will be handled asynchronously)
             eventPublisher.publishEvent(new NotificationEvent(
-                    savedTenant.getId(),
+                    savedTenant.getTenantId(),
                     savedTenant.getAdminEmail(),
                     "Tenant Activation",
                     "Tenant activation successful.",

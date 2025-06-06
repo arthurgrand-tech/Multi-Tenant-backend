@@ -12,7 +12,7 @@ public class Tenant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private int tenantId;
 
     @Column(unique = true, nullable = false)
     private String domain;

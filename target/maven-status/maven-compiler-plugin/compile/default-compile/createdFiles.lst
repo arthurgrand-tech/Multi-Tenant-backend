@@ -2,6 +2,7 @@ com\ArthurGrand\admin\tenants\controller\TenantController.class
 com\ArthurGrand\common\component\TenantStatusValidator.class
 com\ArthurGrand\module\employee\service\EmployeeService.class
 com\ArthurGrand\dto\LoginDto.class
+com\ArthurGrand\admin\dto\UserSessionDto.class
 com\ArthurGrand\admin\tenants\entity\Tenant.class
 com\ArthurGrand\config\AppConfig.class
 com\ArthurGrand\admin\tenants\entity\TenantProfile.class
@@ -30,6 +31,7 @@ com\ArthurGrand\admin\tenants\repository\TenantRepository.class
 com\ArthurGrand\common\component\TenantDataSourceInitializer.class
 com\ArthurGrand\module\employee\entity\Employee.class
 com\ArthurGrand\admin\tenants\service\TenantService.class
+com\ArthurGrand\admin\tenants\service\TenantTimeService.class
 com\ArthurGrand\dto\ApiResponse.class
 com\ArthurGrand\module\notification\events\NotificationEvent.class
 com\ArthurGrand\common\component\TenantStatusValidator$1.class
@@ -49,4 +51,5 @@ com\ArthurGrand\common\exception\EmailAlreadyExistsException.class
 com\ArthurGrand\dto\JwtResponse.class
 com\ArthurGrand\admin\dto\TenantResponseDto.class
 com\ArthurGrand\common\enums\NotificationType.class
+com\ArthurGrand\admin\tenants\serviceImp\TenantTimeServiceImp.class
 com\ArthurGrand\security\TenantValidationFilter.class

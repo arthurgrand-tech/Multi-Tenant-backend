@@ -1,11 +1,10 @@
 package com.ArthurGrand.security;
 
-import com.ArthurGrand.admin.dto.TenantSession;
+import com.ArthurGrand.admin.dto.UserSessionDto;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
 import com.ArthurGrand.admin.tenants.repository.TenantRepository;
 import com.ArthurGrand.common.component.TenantStatusValidator;
-import com.ArthurGrand.common.enums.TenantStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -94,7 +93,7 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         }
 
         Tenant tenant = optionalTenant.get();
-        System.out.println("🔍 Found tenant: " + tenant.getCompanyName() + " (ID: " + tenant.getId() + ")");
+        System.out.println("🔍 Found tenant: " + tenant.getCompanyName() + " (ID: " + tenant.getTenantId() + ")");
         System.out.println("🔍 Tenant database name: " + tenant.getDatabaseName());
         System.out.println("🔍 Tenant status: " + tenant.getStatus());
 
@@ -107,7 +106,7 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         System.out.println("✅ Setting tenant context to: " + tenant.getDatabaseName());
         TenantContext.setCurrentTenant(tenant.getDatabaseName());
 
-        TenantContext.setTenantInfo(modelMapper.map(tenant, TenantSession.class));
+        TenantContext.setUserSession(modelMapper.map(tenant, UserSessionDto.class));
         try {
             System.out.println("🔄 Proceeding with request for tenant: " + tenant.getDatabaseName());
             filterChain.doFilter(request, response);

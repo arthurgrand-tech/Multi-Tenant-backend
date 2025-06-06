@@ -1,11 +1,11 @@
 package com.ArthurGrand.admin.tenants.context;
 
 
-import com.ArthurGrand.admin.dto.TenantSession;
+import com.ArthurGrand.admin.dto.UserSessionDto;
 
 public class TenantContext {
     private static final ThreadLocal<String> currentTenant = new ThreadLocal<>();
-    private static final ThreadLocal<TenantSession> currentTenantInfo = new ThreadLocal<>();
+    private static final ThreadLocal<UserSessionDto> currentUserInfo = new ThreadLocal<>();
 
     public static void setCurrentTenant(String tenantId) {
         System.out.println("Setting tenant context: " + tenantId);
@@ -22,11 +22,11 @@ public class TenantContext {
     }
 
     // NEW: Store full tenant object
-    public static void setTenantInfo(TenantSession tenantSession) {
-        currentTenantInfo.set(tenantSession);
+    public static void setUserSession(UserSessionDto userSession) {
+        currentUserInfo.set(userSession);
     }
 
-    public static TenantSession getTenantInfo() {
-        return currentTenantInfo.get();
+    public static UserSessionDto getUserSession() {
+        return currentUserInfo.get();
     }
 }

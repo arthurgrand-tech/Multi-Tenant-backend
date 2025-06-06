@@ -9,7 +9,7 @@ import java.time.Instant;
 
 @Data
 public class TenantResponseDto  {
-    private Long id;
+    private Long tenantId;
     private String domain;
     private String companyName;
     private String adminEmail;

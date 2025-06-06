@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface TenantProfileRepository extends JpaRepository<TenantProfile,Integer> {
-    Optional<TenantProfile> findByTenantId(int tenantId);
+    Optional<TenantProfile> findByTenant_TenantId(int tenantId);
 }
