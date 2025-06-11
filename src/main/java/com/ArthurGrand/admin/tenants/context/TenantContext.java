@@ -5,11 +5,10 @@ import com.ArthurGrand.admin.dto.UserSessionDto;
 
 public class TenantContext {
     private static final ThreadLocal<String> currentTenant = new ThreadLocal<>();
-    private static final ThreadLocal<UserSessionDto> currentUserInfo = new ThreadLocal<>();
+    private static final ThreadLocal<UserSessionDto> currentUser = new ThreadLocal<>();
 
-    public static void setCurrentTenant(String tenantId) {
-        System.out.println("Setting tenant context: " + tenantId);
-        currentTenant.set(tenantId);
+    public static void setCurrentTenant(String tenantDbName) {
+        currentTenant.set(tenantDbName);
     }
 
     public static String getCurrentTenant() {
@@ -17,16 +16,15 @@ public class TenantContext {
     }
 
     public static void clear() {
-        System.out.println("Clearing tenant context");
         currentTenant.remove();
+        currentUser.remove();
     }
 
-    // NEW: Store full tenant object
-    public static void setUserSession(UserSessionDto userSession) {
-        currentUserInfo.set(userSession);
+    public static void setUserSession(UserSessionDto sessionDto) {
+        currentUser.set(sessionDto);
     }
 
     public static UserSessionDto getUserSession() {
-        return currentUserInfo.get();
+        return currentUser.get();
     }
 }

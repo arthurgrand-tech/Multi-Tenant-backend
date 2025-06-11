@@ -5,12 +5,19 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Value;
 
+import java.security.Key;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
+
+    @Value("${jwt.secret}")
+    private String secret;
 
     private final JwtConfig jwtConfig;
     private final SecretKey signingKey;
@@ -30,7 +37,14 @@ public class JwtUtil {
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
-
+    public Claims parseToken(String token) {
+        Key key = Keys.hmacShaKeyFor(secret.getBytes());
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
     }

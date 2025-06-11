@@ -3,14 +3,14 @@ package com.ArthurGrand.security;
 import com.ArthurGrand.admin.dto.UserSessionDto;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
-import com.ArthurGrand.admin.tenants.repository.TenantRepository;
 import com.ArthurGrand.admin.tenants.serviceImp.TenantCacheService;
+import com.ArthurGrand.common.component.JwtUtil;
 import com.ArthurGrand.common.component.TenantStatusValidator;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,16 +21,15 @@ import java.util.Optional;
 public class TenantValidationFilter extends OncePerRequestFilter {
 
     private final TenantStatusValidator tenantStatusValidator;
-    private final ModelMapper modelMapper;
     private final TenantCacheService tenantCacheService;
-
+    private final JwtUtil jwtUtil;
     public TenantValidationFilter(
                                   TenantStatusValidator tenantStatusValidator,
-                                  ModelMapper modelMapper,
-                                  TenantCacheService tenantCacheService) {
+                                  TenantCacheService tenantCacheService,
+                                  JwtUtil jwtUtil) {
         this.tenantStatusValidator = tenantStatusValidator;
-        this.modelMapper=modelMapper;
         this.tenantCacheService=tenantCacheService;
+        this.jwtUtil=jwtUtil;
     }
 
     @Override
@@ -108,7 +107,27 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         System.out.println("✅ Setting tenant context to: " + tenant.getDatabaseName());
         TenantContext.setCurrentTenant(tenant.getDatabaseName());
 
-        TenantContext.setUserSession(modelMapper.map(tenant, UserSessionDto.class));
+        // 🔐 Extract employeeId from JWT
+        Integer employeeId = null;
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7); // remove "Bearer "
+            try {
+                Claims claims = jwtUtil.parseToken(token);
+                employeeId = claims.get("employeeId", Integer.class);
+                System.out.println("👤 Extracted employeeId from token: " + employeeId);
+            } catch (Exception e) {
+                System.out.println("⚠️ Failed to parse JWT token: " + e.getMessage());
+            }
+        }
+
+        UserSessionDto sessionDto = new UserSessionDto();
+        sessionDto.setTenantId(tenant.getTenantId());
+        sessionDto.setDomain(tenant.getDomain());
+        sessionDto.setTimezone(tenant.getTimezone());
+        sessionDto.setEmployeeId(employeeId);
+
+        TenantContext.setUserSession(sessionDto);
         try {
             System.out.println("🔄 Proceeding with request for tenant: " + tenant.getDatabaseName());
             filterChain.doFilter(request, response);
