@@ -2,6 +2,7 @@ package com.ArthurGrand.admin.tenants.serviceImp;
 
 import com.ArthurGrand.admin.dto.TenantRegisterDto;
 import com.ArthurGrand.admin.dto.TenantResponseDto;
+import com.ArthurGrand.admin.dto.TenantUpdateDto;
 import com.ArthurGrand.admin.tenants.entity.Tenant;
 import com.ArthurGrand.admin.tenants.entity.TenantProfile;
 import com.ArthurGrand.admin.tenants.repository.TenantProfileRepository;
@@ -13,6 +14,7 @@ import com.ArthurGrand.config.DatabaseConfiguration;
 import com.ArthurGrand.dto.EmailCategory;
 import com.ArthurGrand.dto.EmailTemplateBindingDTO;
 import com.ArthurGrand.module.notification.events.NotificationEvent;
+import com.ArthurGrand.module.notification.serviceImp.NotificationObservable;
 import jakarta.transaction.Transactional;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
@@ -23,6 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -44,6 +47,7 @@ public class TenantServiceImp implements TenantService {
     private final TenantProfileRepository tenantProfileRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final TenantCacheService tenantCacheService;
+    private final NotificationObservable notificationObservable;
 
     public TenantServiceImp(JdbcTemplate jdbcTemplate,
                             DatabaseConfiguration databaseConfiguration,
@@ -51,14 +55,16 @@ public class TenantServiceImp implements TenantService {
                             ModelMapper modelMapper,
                             TenantProfileRepository tenantProfileRepository,
                             ApplicationEventPublisher eventPublisher,
-                            TenantCacheService tenantCacheService) {
+                            TenantCacheService tenantCacheService,
+                            NotificationObservable notificationObservable) {
         this.jdbcTemplate = jdbcTemplate;
         this.databaseConfiguration = databaseConfiguration;
         this.tenantRepository = tenantRepository;
         this.modelMapper = modelMapper;
-        this.tenantProfileRepository=tenantProfileRepository;
-        this.eventPublisher=eventPublisher;
-        this.tenantCacheService=tenantCacheService;
+        this.tenantProfileRepository = tenantProfileRepository;
+        this.eventPublisher = eventPublisher;
+        this.tenantCacheService = tenantCacheService;
+        this.notificationObservable = notificationObservable;
     }
 
     @Override
@@ -95,14 +101,14 @@ public class TenantServiceImp implements TenantService {
 
             TenantResponseDto tenantResDto = modelMapper.map(savedTenant, TenantResponseDto.class);
 
-            TenantProfile tenantProfile= new TenantProfile();
+            TenantProfile tenantProfile = new TenantProfile();
             tenantProfile.setTenant(savedTenant);
             tenantProfile.setContactPerson(tenantRegisterDto.getContactPerson());
             tenantProfile.setEmail(tenantRegisterDto.getAdminEmail());
             tenantProfile.setPhoneNumber(tenantRegisterDto.getPhoneNumber());
             tenantProfile.setAddress(tenantRegisterDto.getAddress());
             tenantProfile.setWebsite(tenantRegisterDto.getWebsite());
-            TenantProfile savedTenantProfile=tenantProfileRepository.save(tenantProfile);
+            TenantProfile savedTenantProfile = tenantProfileRepository.save(tenantProfile);
 
             // After saving tenant and profile
             EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
@@ -113,7 +119,17 @@ public class TenantServiceImp implements TenantService {
             binding.setPageUrl("http://localhost:5000/" + savedTenant.getDomain() + "/login");
 
             // Publish event (this will be handled asynchronously)
-            eventPublisher.publishEvent(new NotificationEvent(
+//            eventPublisher.publishEvent(new NotificationEvent(
+//                    savedTenant.getTenantId(),
+//                    savedTenant.getAdminEmail(),
+//                    "Tenant Registration",
+//                    "Tenant registration successful.",
+//                    "tenant-created",
+//                    binding,
+//                    EmailCategory.TenantCreate
+//            ));
+
+            notificationObservable.notifyObservers(new NotificationEvent(
                     savedTenant.getTenantId(),
                     savedTenant.getAdminEmail(),
                     "Tenant Registration",
@@ -122,6 +138,7 @@ public class TenantServiceImp implements TenantService {
                     binding,
                     EmailCategory.TenantCreate
             ));
+
             return tenantResDto;
 
         } catch (IllegalArgumentException e) {
@@ -160,11 +177,11 @@ public class TenantServiceImp implements TenantService {
 
             // Update status to ACTIVE
             tenant.setStatus(TenantStatus.ACTIVE);
-            Tenant savedTenant=tenantRepository.save(tenant);
+            Tenant savedTenant = tenantRepository.save(tenant);
 
             tenantCacheService.updateTenantCache(savedTenant); // 🔁 manually update cache
 
-            Optional<TenantProfile> tenantProfileOpt=tenantProfileRepository.findByTenant_TenantId(savedTenant.getTenantId());
+            Optional<TenantProfile> tenantProfileOpt = tenantProfileRepository.findByTenant_TenantId(savedTenant.getTenantId());
 
             // After saving tenant and profile
             EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
@@ -173,7 +190,17 @@ public class TenantServiceImp implements TenantService {
             binding.setPageUrl("http://localhost:5000/");
 
             // Publish event (this will be handled asynchronously)
-            eventPublisher.publishEvent(new NotificationEvent(
+//            eventPublisher.publishEvent(new NotificationEvent(
+//                    savedTenant.getTenantId(),
+//                    savedTenant.getAdminEmail(),
+//                    "Tenant Activation",
+//                    "Tenant activation successful.",
+//                    "tenant-activate",
+//                    binding,
+//                    EmailCategory.TenantActive
+//            ));
+
+            notificationObservable.notifyObservers(new NotificationEvent(
                     savedTenant.getTenantId(),
                     savedTenant.getAdminEmail(),
                     "Tenant Activation",
@@ -187,6 +214,58 @@ public class TenantServiceImp implements TenantService {
             throw new IllegalStateException("Failed to activate tenant: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public TenantUpdateDto updateTenant(TenantUpdateDto tenantUpdateDto) {
+        Tenant existingTenant = tenantRepository.findById(tenantUpdateDto.getTenantId())
+                .orElseThrow(() -> new TenantNotFoundException(tenantUpdateDto.getAdminEmail()));
+
+        EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+        StringBuilder changes = new StringBuilder();
+
+        if (!Objects.equals(existingTenant.getCompanyName(), tenantUpdateDto.getCompanyName())) {
+            binding.setOrganizationName(tenantUpdateDto.getCompanyName());
+            changes.append("Company Name<br>");
+        }
+        if (!Objects.equals(existingTenant.getAdminEmail(), tenantUpdateDto.getAdminEmail())) {
+            binding.setAdminEmail(tenantUpdateDto.getAdminEmail());
+            changes.append("Admin Email<br>");
+        }
+        if (!Objects.equals(existingTenant.getTimezone(), tenantUpdateDto.getTimezone())) {
+            binding.setFromDate(existingTenant.getTimezone());
+            binding.setToDate(tenantUpdateDto.getTimezone());
+            changes.append("Timezone<br>");
+        }
+        if (!Objects.equals(existingTenant.getStatus(), tenantUpdateDto.getStatus())) {
+            binding.setStatus(tenantUpdateDto.getStatus().name());
+            changes.append("Status<br>");
+        }
+        if (!Objects.equals(existingTenant.getDomain(), tenantUpdateDto.getDomain())) {
+            binding.setDomain(tenantUpdateDto.getDomain());
+            changes.append("Domain<br>");
+        }
+
+        // (continue for other fields if needed...)
+
+        Tenant updatedTenant = new Tenant();
+        modelMapper.map(tenantUpdateDto, updatedTenant);
+
+        Tenant savedTenant = tenantRepository.save(updatedTenant);
+        tenantCacheService.updateTenantCache(savedTenant);
+
+        notificationObservable.notifyObservers(new NotificationEvent(
+                savedTenant.getTenantId(),
+                savedTenant.getAdminEmail(),
+                "Tenant Updated",
+                "The following fields were updated:<br>" + changes,
+                "tenant-update",
+                binding,
+                EmailCategory.TenantUpdate
+        ));
+
+        return modelMapper.map(savedTenant, TenantUpdateDto.class);
+    }
+
 
     public boolean checkIfDatabaseExists(String dbName) {
         String sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?";

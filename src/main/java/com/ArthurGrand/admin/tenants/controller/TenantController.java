@@ -2,6 +2,7 @@ package com.ArthurGrand.admin.tenants.controller;
 
 import com.ArthurGrand.admin.dto.TenantRegisterDto;
 import com.ArthurGrand.admin.dto.TenantResponseDto;
+import com.ArthurGrand.admin.dto.TenantUpdateDto;
 import com.ArthurGrand.admin.tenants.service.TenantService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +49,16 @@ public class TenantController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Unexpected error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/updateTenant")
+    public ResponseEntity<?> updateTenant(@RequestBody TenantUpdateDto tenantUpdateDto){
+        try {
+            tenantService.updateTenant(tenantUpdateDto);
+            return ResponseEntity.status(HttpStatus.OK).body("Tenant updated successful.");
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong.");
         }
     }
 

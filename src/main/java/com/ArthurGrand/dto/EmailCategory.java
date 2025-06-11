@@ -8,5 +8,6 @@ public enum EmailCategory {
     Customer,
     ProjectCompletion,
     TenantCreate,
+    TenantUpdate,
     TenantActive
 }

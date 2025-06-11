@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<p>Hello,</p>
+<p>The following fields were updated in your tenant profile:</p>
+
+<ul>
+    <li th:if="${organizationName}">Company Name: <span th:text="${organizationName}"></span></li>
+    <li th:if="${adminEmail}">Admin Email: <span th:text="${adminEmail}"></span></li>
+    <li th:if="${status}">Status: <span th:text="${status}"></span></li>
+    <li th:if="${from} and ${to}">Timezone: <span th:text="${from}"></span> → <span th:text="${to}"></span></li>
+    <li th:if="${domain}">Domain: <span th:text="${domain}"></span></li>
+    <!-- Add more fields as needed -->
+</ul>
+
+<p>If you did not request this change, please contact support immediately.</p>
+</body>
+</html>

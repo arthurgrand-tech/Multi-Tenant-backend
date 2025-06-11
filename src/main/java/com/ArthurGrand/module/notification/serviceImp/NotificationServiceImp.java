@@ -55,8 +55,6 @@ public class NotificationServiceImp implements NotificationService {
         }
     }
 
-
-
     @EventListener
     @Async("notificationExecutor")
     public void onNotificationEvent(NotificationEvent event) {

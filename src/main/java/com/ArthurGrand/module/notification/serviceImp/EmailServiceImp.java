@@ -9,23 +9,22 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 @Service
 public class EmailServiceImp implements EmailService {
-
     private final TemplateEngine templateEngine;
     private final JavaMailSender javaMailSender;
-
     public EmailServiceImp(TemplateEngine templateEngine,
                            JavaMailSender javaMailSender) {
         this.templateEngine = templateEngine;
         this.javaMailSender = javaMailSender;
     }
-
     @Override
+    @Async
     public void sendEmail(EmailDetailsDTO emailDetailsDTO, EmailTemplateBindingDTO emailTemplateBindingDto,
                           String emailTemplate) {
         Context context = new Context();
@@ -59,10 +58,8 @@ public class EmailServiceImp implements EmailService {
             helper.setTo(emailDetailsDTO.getRecipient());
             helper.setSubject(emailDetailsDTO.getSubject());
             helper.setText(emailContent, true); // true for HTML content
-
             // Set a from address if not configured globally
             // helper.setFrom("noreply@yourcompany.com");
-
             javaMailSender.send(mimeMessage);
 
         } catch (MessagingException e) {
