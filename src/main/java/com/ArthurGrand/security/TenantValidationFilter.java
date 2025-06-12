@@ -125,7 +125,9 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         sessionDto.setTenantId(tenant.getTenantId());
         sessionDto.setDomain(tenant.getDomain());
         sessionDto.setTimezone(tenant.getTimezone());
-        sessionDto.setEmployeeId(employeeId);
+        if(employeeId != null){
+            sessionDto.setEmployeeId(employeeId);
+        }
 
         TenantContext.setUserSession(sessionDto);
         try {

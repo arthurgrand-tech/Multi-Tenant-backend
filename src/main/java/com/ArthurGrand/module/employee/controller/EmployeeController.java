@@ -1,6 +1,7 @@
 package com.ArthurGrand.module.employee.controller;
 
 
+import com.ArthurGrand.admin.dto.UserSessionDto;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.dto.ApiResponse;
 import com.ArthurGrand.dto.EmployeeDto;
@@ -21,9 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
-
 import java.util.stream.Collectors;
 
 @RestController
@@ -65,7 +63,6 @@ public class EmployeeController {
                     .body(new ApiResponse<>("Validation Error",error));
         }
         boolean emailExists= employeeRepo.existsByEmailid(employeeDto.getEmailid());
-        String currDb= TenantContext.getCurrentTenant();
        if(emailExists){
            return ResponseEntity.status(HttpStatus.CONFLICT)
                    .body(new ApiResponse<>("Email Already exists",null));
@@ -77,6 +74,7 @@ public class EmployeeController {
     @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<EmployeeDto>>> getAllEmployees() {
         List<EmployeeDto> employees = employeeService.getAllEmployees();
+        UserSessionDto us= TenantContext.getUserSession();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponse<>("Employee fetch successful",employees));
     }
