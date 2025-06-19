@@ -7,4 +7,21 @@ CREATE TABLE IF NOT EXISTS employee (
 );
 
 
--- Add other tables (departments, projects, timesheets) here
+CREATE TABLE IF NOT EXISTS client (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    client_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20),
+    address VARCHAR(1000),
+    website VARCHAR(255),
+    contact_person VARCHAR(255),
+    industry VARCHAR(100),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_client_name (client_name),
+    INDEX idx_client_email (email),
+    INDEX idx_client_active (is_active),
+    INDEX idx_client_industry (industry)
+);

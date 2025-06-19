@@ -3,6 +3,7 @@ package com.ArthurGrand.module.Client.controller;
 import com.ArthurGrand.dto.ApiResponse;
 import com.ArthurGrand.dto.ClientDTO;
 import com.ArthurGrand.module.Client.service.ClientService;
+import com.ArthurGrand.common.exception.ClientNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,7 +73,7 @@ public class ClientController {
         try {
             ClientDTO client = clientService.getClientById(id);
             return ResponseEntity.ok(new ApiResponse<>("Client fetched successfully", client));
-        } catch (RuntimeException e) {
+        } catch (ClientNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("Client not found", null));
         } catch (Exception e) {
@@ -91,21 +92,16 @@ public class ClientController {
                     .map(ObjectError::getDefaultMessage)
                     .collect(Collectors.joining(", "));
 
-            Map<String, Object> error = new HashMap<>();
-            error.put("timestamp", Instant.now());
-            error.put("status", HttpStatus.BAD_REQUEST.value());
-            error.put("error", "Validation Error");
-            error.put("message", errors);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>("Validation Error", null));
+                    .body(new ApiResponse<>("Validation Error: " + errors, null));
         }
 
         try {
             ClientDTO updatedClient = clientService.updateClient(id, clientDTO);
             return ResponseEntity.ok(new ApiResponse<>("Client updated successfully", updatedClient));
-        } catch (RuntimeException e) {
+        } catch (ClientNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(e.getMessage(), null));
+                    .body(new ApiResponse<>("Client not found", null));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(e.getMessage(), null));
@@ -120,7 +116,7 @@ public class ClientController {
         try {
             clientService.deleteClient(id);
             return ResponseEntity.ok(new ApiResponse<>("Client deleted successfully", null));
-        } catch (RuntimeException e) {
+        } catch (ClientNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("Client not found", null));
         } catch (Exception e) {
@@ -160,7 +156,7 @@ public class ClientController {
         try {
             ClientDTO client = clientService.activateClient(id);
             return ResponseEntity.ok(new ApiResponse<>("Client activated successfully", client));
-        } catch (RuntimeException e) {
+        } catch (ClientNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("Client not found", null));
         } catch (Exception e) {
@@ -174,7 +170,7 @@ public class ClientController {
         try {
             ClientDTO client = clientService.deactivateClient(id);
             return ResponseEntity.ok(new ApiResponse<>("Client deactivated successfully", client));
-        } catch (RuntimeException e) {
+        } catch (ClientNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("Client not found", null));
         } catch (Exception e) {

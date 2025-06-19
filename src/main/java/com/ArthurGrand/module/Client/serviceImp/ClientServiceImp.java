@@ -1,5 +1,6 @@
 package com.ArthurGrand.module.Client.serviceImp;
 
+import com.ArthurGrand.common.exception.ClientNotFoundException;
 import com.ArthurGrand.dto.ClientDTO;
 import com.ArthurGrand.module.Client.entity.Client;
 import com.ArthurGrand.module.Client.repository.ClientRepository;
@@ -9,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,14 +48,14 @@ public class ClientServiceImp implements ClientService {
     @Transactional(readOnly = true)
     public ClientDTO getClientById(Integer id) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Client not found with id: " + id));
+                .orElseThrow(() -> new ClientNotFoundException(id));
         return modelMapper.map(client, ClientDTO.class);
     }
 
     @Override
     public ClientDTO updateClient(Integer id, ClientDTO clientDTO) {
         Client existingClient = clientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Client not found with id: " + id));
+                .orElseThrow(() -> new ClientNotFoundException(id));
 
         // Check if email is being changed and if new email already exists
         if (clientDTO.getEmail() != null &&
@@ -83,7 +83,7 @@ public class ClientServiceImp implements ClientService {
     @Override
     public void deleteClient(Integer id) {
         if (!clientRepository.existsById(id)) {
-            throw new RuntimeException("Client not found with id: " + id);
+            throw new ClientNotFoundException(id);
         }
         clientRepository.deleteById(id);
     }
@@ -107,7 +107,7 @@ public class ClientServiceImp implements ClientService {
     @Override
     public ClientDTO activateClient(Integer id) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Client not found with id: " + id));
+                .orElseThrow(() -> new ClientNotFoundException(id));
 
         client.setIsActive(true);
         Client updatedClient = clientRepository.save(client);
@@ -117,7 +117,7 @@ public class ClientServiceImp implements ClientService {
     @Override
     public ClientDTO deactivateClient(Integer id) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Client not found with id: " + id));
+                .orElseThrow(() -> new ClientNotFoundException(id));
 
         client.setIsActive(false);
         Client updatedClient = clientRepository.save(client);
