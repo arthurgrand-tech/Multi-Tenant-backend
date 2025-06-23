@@ -1,7 +1,7 @@
 package com.ArthurGrand.module.notification.serviceImp;
 
-import com.ArthurGrand.dto.EmailDetailsDTO;
-import com.ArthurGrand.dto.EmailTemplateBindingDTO;
+import com.ArthurGrand.dto.EmailDetailsDto;
+import com.ArthurGrand.dto.EmailTemplateBindingDto;
 import com.ArthurGrand.module.notification.events.NotificationEvent;
 import com.ArthurGrand.module.notification.service.AppNotificationService;
 import com.ArthurGrand.module.notification.service.EmailService;
@@ -29,11 +29,11 @@ public class NotificationServiceImp implements NotificationService {
     @Async("notificationExecutor")
     public CompletableFuture<Void> sendNotification(String email, int tenantId, String subject,
                                                     String message, String emailTemplate,
-                                                    EmailTemplateBindingDTO binding) {
+                                                    EmailTemplateBindingDto binding) {
         try {
             System.out.println("Starting async notification for email: {}"+ email);
 
-            EmailDetailsDTO emailDetails = new EmailDetailsDTO();
+            EmailDetailsDto emailDetails = new EmailDetailsDto();
             emailDetails.setRecipient(email);
             emailDetails.setSubject(subject);
             emailDetails.setMsgBody(message);

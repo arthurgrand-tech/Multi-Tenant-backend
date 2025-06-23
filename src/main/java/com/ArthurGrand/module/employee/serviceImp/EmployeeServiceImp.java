@@ -32,14 +32,14 @@ public class EmployeeServiceImp implements EmployeeService {
         String tenantId = "master_db"; // Your tenant database name
         try {
             TenantContext.setCurrentTenant(tenantId); // Switch to tenant
-            Optional<Employee> empOpt=employeeRepo.findByEmailid("superadmin@gmail.com");
+            Optional<Employee> empOpt=employeeRepo.findByEmailId("superadmin@gmail.com");
             if(!empOpt.isEmpty()){
                 return;
             }
             Employee emp = new Employee();
             emp.setFirstname("Super");
             emp.setLastname("Admin");
-            emp.setEmailid("superadmin@gmail.com");
+            emp.setEmailId("superadmin@gmail.com");
             String pswEncode=passwordEncoder.encode("123");
             emp.setPassword(pswEncode);
             employeeRepo.save(emp);

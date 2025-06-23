@@ -39,7 +39,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDto request) {
         try {
-            Optional<Employee> employeeOpt=employeeRepository.findByEmailid(request.getEmailid());
+            Optional<Employee> employeeOpt=employeeRepository.findByEmailId(request.getEmailid());
             if(employeeOpt.isEmpty()){
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Email not found");
@@ -50,7 +50,7 @@ public class AuthController {
 
             final String jwt = jwtUtil.generateToken(employeeOpt.get());
 
-            return ResponseEntity.ok(new JwtResponse(jwt, employeeOpt.get().getEmailid()));
+            return ResponseEntity.ok(new JwtResponse(jwt, employeeOpt.get().getEmailId()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }

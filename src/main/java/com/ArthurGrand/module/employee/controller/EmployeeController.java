@@ -62,7 +62,7 @@ public class EmployeeController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>("Validation Error",error));
         }
-        boolean emailExists= employeeRepo.existsByEmailid(employeeDto.getEmailid());
+        boolean emailExists= employeeRepo.existsByEmailId(employeeDto.getEmailId());
        if(emailExists){
            return ResponseEntity.status(HttpStatus.CONFLICT)
                    .body(new ApiResponse<>("Email Already exists",null));

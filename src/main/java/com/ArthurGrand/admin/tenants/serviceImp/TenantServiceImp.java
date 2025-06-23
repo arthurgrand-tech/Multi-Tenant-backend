@@ -12,7 +12,7 @@ import com.ArthurGrand.common.enums.TenantStatus;
 import com.ArthurGrand.common.exception.TenantNotFoundException;
 import com.ArthurGrand.config.DatabaseConfiguration;
 import com.ArthurGrand.dto.EmailCategory;
-import com.ArthurGrand.dto.EmailTemplateBindingDTO;
+import com.ArthurGrand.dto.EmailTemplateBindingDto;
 import com.ArthurGrand.module.notification.events.NotificationEvent;
 import com.ArthurGrand.module.notification.serviceImp.NotificationObservable;
 import jakarta.transaction.Transactional;
@@ -111,7 +111,7 @@ public class TenantServiceImp implements TenantService {
             TenantProfile savedTenantProfile = tenantProfileRepository.save(tenantProfile);
 
             // After saving tenant and profile
-            EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+            EmailTemplateBindingDto binding = new EmailTemplateBindingDto();
             binding.setContactPerson(savedTenantProfile.getContactPerson());
             binding.setOrganizationName(savedTenant.getCompanyName());
             binding.setDomain(savedTenant.getDomain());
@@ -184,7 +184,7 @@ public class TenantServiceImp implements TenantService {
             Optional<TenantProfile> tenantProfileOpt = tenantProfileRepository.findByTenant_TenantId(savedTenant.getTenantId());
 
             // After saving tenant and profile
-            EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+            EmailTemplateBindingDto binding = new EmailTemplateBindingDto();
             binding.setOrganizationName(savedTenant.getCompanyName());
             binding.setContactPerson(tenantProfileOpt.get().getContactPerson());
             binding.setPageUrl("http://localhost:5000/");
@@ -220,7 +220,7 @@ public class TenantServiceImp implements TenantService {
         Tenant existingTenant = tenantRepository.findById(tenantUpdateDto.getTenantId())
                 .orElseThrow(() -> new TenantNotFoundException(tenantUpdateDto.getAdminEmail()));
 
-        EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+        EmailTemplateBindingDto binding = new EmailTemplateBindingDto();
         StringBuilder changes = new StringBuilder();
 
         if (!Objects.equals(existingTenant.getCompanyName(), tenantUpdateDto.getCompanyName())) {

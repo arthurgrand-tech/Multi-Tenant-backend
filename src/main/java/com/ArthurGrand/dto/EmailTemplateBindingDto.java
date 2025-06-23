@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Data
-public class EmailTemplateBindingDTO {
+public class EmailTemplateBindingDto {
     private String name;
     private String status;
     private String supervisor;

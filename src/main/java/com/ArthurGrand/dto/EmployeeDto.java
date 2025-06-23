@@ -6,7 +6,8 @@ import lombok.Data;
 
 @Data
 public class EmployeeDto {
-    private int employeeId;
+    private int id;
+    private String employeeId;
     @NotBlank(message = "First name is required")
     private String firstname;
 
@@ -14,7 +15,7 @@ public class EmployeeDto {
 
     @Email(message = "Invalid email format")
     @NotBlank(message = "Email is required")
-    private String emailid;
+    private String emailId;
 
     @NotBlank(message = "Password is required")
     private String password;

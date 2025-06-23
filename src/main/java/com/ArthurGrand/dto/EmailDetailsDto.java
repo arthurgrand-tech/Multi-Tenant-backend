@@ -3,7 +3,7 @@ package com.ArthurGrand.dto;
 import lombok.Data;
 
 @Data
-public class EmailDetailsDTO {
+public class EmailDetailsDto {
     private String recipient;
     private String msgBody;
     private String subject;

@@ -1,12 +1,11 @@
 package com.ArthurGrand.module.notification.serviceImp;
 
-import com.ArthurGrand.dto.EmailDetailsDTO;
-import com.ArthurGrand.dto.EmailTemplateBindingDTO;
+import com.ArthurGrand.dto.EmailDetailsDto;
+import com.ArthurGrand.dto.EmailTemplateBindingDto;
 import com.ArthurGrand.module.notification.service.EmailService;
-import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
-import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -25,7 +24,7 @@ public class EmailServiceImp implements EmailService {
     }
     @Override
     @Async
-    public void sendEmail(EmailDetailsDTO emailDetailsDTO, EmailTemplateBindingDTO emailTemplateBindingDto,
+    public void sendEmail(EmailDetailsDto emailDetailsDTO, EmailTemplateBindingDto emailTemplateBindingDto,
                           String emailTemplate) {
         Context context = new Context();
         try {
@@ -69,5 +68,19 @@ public class EmailServiceImp implements EmailService {
         } finally {
             context.clearVariables();
         }
+    }
+
+    @Override
+    public void sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentName, ByteArrayResource attachmentData) throws MessagingException {
+        MimeMessage message = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+        helper.setFrom(from);
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(body);
+        helper.addAttachment(attachmentName, attachmentData);
+
+        javaMailSender.send(message);
     }
 }

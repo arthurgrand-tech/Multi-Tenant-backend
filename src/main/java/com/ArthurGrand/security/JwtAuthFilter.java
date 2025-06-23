@@ -58,7 +58,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<Employee> optionalEmployee = employeeRepository.findByEmailid(username);
+            Optional<Employee> optionalEmployee = employeeRepository.findByEmailId(username);
 
             if (optionalEmployee.isEmpty()) {
                 handleException(response, "User not found", HttpServletResponse.SC_UNAUTHORIZED);
