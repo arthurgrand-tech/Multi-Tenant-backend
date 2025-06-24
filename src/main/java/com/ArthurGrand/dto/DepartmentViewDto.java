@@ -1,17 +1,14 @@
 package com.ArthurGrand.dto;
 
-import lombok.AllArgsConstructor;
+import com.ArthurGrand.module.employee.entity.Employee;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.Set;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class DepartmentDto {
+public class DepartmentViewDto {
     private Integer departmentId;
     private String departmentName;
     private String departmentLead;
-    private Set<Integer> employees;
+    private Set<EmployeeViewDto> employees;
 }

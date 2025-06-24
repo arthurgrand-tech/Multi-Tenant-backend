@@ -1,14 +1,13 @@
 package com.ArthurGrand.module.department.serviceImp;
 
 import com.ArthurGrand.common.exception.DepartmentNotFoundException;
-import com.ArthurGrand.dto.DepartmentDto;
-import com.ArthurGrand.dto.DepartmentSimplifyDto;
-import com.ArthurGrand.dto.DropDownDto;
+import com.ArthurGrand.dto.*;
 import com.ArthurGrand.module.department.entity.Department;
 import com.ArthurGrand.module.department.repository.DepartmentRepository;
 import com.ArthurGrand.module.department.service.DepartmentService;
 import com.ArthurGrand.module.employee.entity.Employee;
 import com.ArthurGrand.module.employee.repository.EmployeeRepository;
+import com.itextpdf.text.pdf.qrcode.Mode;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
@@ -39,195 +38,173 @@ public class DepartmentServiceImp implements DepartmentService {
     }
 
     @Override
-    @Transactional
-    public String addDepartment(DepartmentDto departmentDTO) {
+    public int createDepartment(DepartmentDto departmentDto) {
         Set<Employee> employeeSet = new HashSet<>();
-
-        for (DropDownDto access : departmentDTO.getResources()) {
-            if (access.getId() != null) {
-                Optional<Employee> optionalEmployee = employeeRepo.findById(access.getId());
-                optionalEmployee.ifPresent(employeeSet::add);
-            }
+        for (Integer empId : departmentDto.getEmployees()) {
+            employeeRepo.findById(empId).ifPresent(employeeSet::add);
         }
-
         Department department = new Department();
-        modelMapper.map(departmentDTO, department);
+        department.setDepartmentName(departmentDto.getDepartmentName());
+        department.setDepartmentLead(departmentDto.getDepartmentLead());
+        department.setIsDeleted(false);
+        Department savedDepartment = departmentRepo.save(department);
 
         for (Employee employee : employeeSet) {
-            employee.setDepartment(department);
+            employee.setDepartment(savedDepartment);
         }
+        employeeRepo.saveAll(employeeSet);
 
-        department.setDepartmentLeads(employeeSet);
-        departmentRepo.save(department);
-
-        return department.getDepartmentName();
+        return savedDepartment.getId();
     }
 
     @Override
-    @Transactional
-    public List<DepartmentDto> getAllDepartment() {
-        List<Department> departments = departmentRepo.findAll();
-        List<DepartmentDto> departmentDTOList = new ArrayList<>();
+    public DepartmentViewDto getDepartment(int id) {
+        Optional<Department> deptOpt = departmentRepo.findById(id);
 
-        for (Department dept : departments) {
-            Set<DropDownDto> employeeDto = dept.getDepartmentLeads().stream()
-                    .map(emp -> new DropDownDto(emp.getId(), emp.getFirstname(), emp.getFirstname()))
+        if (deptOpt.isEmpty()) {
+            return null;
+        }
+        Department department = deptOpt.get();
+        DepartmentViewDto dto = new DepartmentViewDto();
+
+        List<Employee> employeeList = employeeRepo.findByDepartmentId(deptOpt.get().getId());
+        Set<EmployeeViewDto> employeeDtoSet = employeeList.stream()
+                .map(emp -> {
+                    EmployeeViewDto empDto = new EmployeeViewDto();
+                    modelMapper.map(emp, empDto);
+                    return empDto;
+                })
+                .collect(Collectors.toSet());
+
+        dto.setDepartmentId(department.getId());
+        dto.setDepartmentName(department.getDepartmentName());
+        dto.setDepartmentLead(department.getDepartmentLead());
+        dto.setEmployees(employeeDtoSet);
+        return dto;
+    }
+
+    @Override
+    public Page<DepartmentViewDto> getAllDepartments(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Department> departmentPage = departmentRepo.findAll(pageable);
+
+        return departmentPage.map(dept -> {
+            DepartmentViewDto dto = new DepartmentViewDto();
+            dto.setDepartmentId(dept.getId());
+            dto.setDepartmentName(dept.getDepartmentName());
+            dto.setDepartmentLead(dept.getDepartmentLead());
+
+            List<Employee> employeeList = employeeRepo.findByDepartmentId(dept.getId());
+
+            Set<EmployeeViewDto> employeeDtoSet = employeeList.stream()
+                    .map(emp -> {
+                        EmployeeViewDto empDto = new EmployeeViewDto();
+                        modelMapper.map(emp, empDto);
+                        return empDto;
+                    })
                     .collect(Collectors.toSet());
 
-            DepartmentDto departmentDTO = new DepartmentDto(
-                    dept.getDepartmentId(),
-                    dept.getDepartmentName(),
-                    dept.getDepartmentLead(),
-                    employeeDto
-            );
-
-            departmentDTOList.add(departmentDTO);
-        }
-
-        return departmentDTOList;
+            dto.setEmployees(employeeDtoSet);
+            return dto;
+        });
     }
 
     @Override
-    @Transactional
-    public Integer updateDepartment(DepartmentDto departmentDTO) {
-        if (!departmentRepo.existsById(departmentDTO.getDepartmentId())) {
-            throw new DepartmentNotFoundException("Department with ID " + departmentDTO.getDepartmentId() + " not found.");
-        }
+    public DepartmentViewDto updateDepartment(int id, DepartmentViewDto dto) {
+        Optional<Department> opt = departmentRepo.findById(id);
+        if (opt.isEmpty()) return null;
 
-        Department department = departmentRepo.getReferenceById(departmentDTO.getDepartmentId());
+        Department dept = opt.get();
+        dept.setDepartmentName(dto.getDepartmentName());
+        dept.setDepartmentLead(dto.getDepartmentLead());
+        departmentRepo.save(dept);
 
-        // Remove existing employees from this department
-        List<Employee> existingEmployees = employeeRepo.findByDepartment(department)
-                .orElse(Collections.emptyList());
+        DepartmentViewDto updatedDto = new DepartmentViewDto();
+        updatedDto.setDepartmentId(dept.getId());
+        updatedDto.setDepartmentName(dept.getDepartmentName());
+        updatedDto.setDepartmentLead(dept.getDepartmentLead());
+        updatedDto.setEmployees(dto.getEmployees()); // Optional: reload from DB
 
-        for (Employee emp : existingEmployees) {
-            emp.setDepartment(null);
-        }
-
-        employeeRepo.saveAll(existingEmployees);
-
-        // Update department fields
-        department.setDepartmentName(departmentDTO.getDepartmentName());
-        department.setDepartmentLead(departmentDTO.getDepartmentLead());
-
-        // Add new employees to the department
-        Set<Employee> updatedEmployees = new HashSet<>();
-        for (DropDownDto dropdownDTO : departmentDTO.getResources()) {
-            if (dropdownDTO.getId() != null) {
-                Employee employee = employeeRepo.getReferenceById(dropdownDTO.getId());
-                employee.setDepartment(department);
-                updatedEmployees.add(employee);
-            }
-        }
-
-        department.setDepartmentLeads(updatedEmployees);
-        departmentRepo.save(department);
-
-        return department.getDepartmentId();
+        return updatedDto;
     }
 
     @Override
-    @Transactional
     public boolean deleteDepartment(int id) {
         if (!departmentRepo.existsById(id)) {
-            throw new DepartmentNotFoundException("Department with ID " + id + " not found.");
+            return false;
         }
-
         departmentRepo.deleteById(id);
         return true;
     }
-
 
     @Override
     @Transactional
     public void exportDepartmentDataToEmail(String recipientEmail, String format) throws MessagingException {
         List<Department> departments = departmentRepo.findAll();
-        List<DepartmentDto> departmentDTOS = new ArrayList<>();
+        List<DepartmentViewDto> departmentDTOs = new ArrayList<>();
+
         for (Department department : departments) {
-            Set<DropDownDto> employeeDTOs = department.getDepartmentLeads().stream()
+            Set<EmployeeViewDto> employeeDTOs = department.getEmployees().stream()
                     .map(employee -> {
-                        DropDownDto dropdownDTO = new DropDownDto();
-                        dropdownDTO.setId(employee.getId()); // Assuming dropdownDTO has setId method
-                        dropdownDTO.setValue(employee.getFirstname()); // Assuming dropdownDTO has setValue method
-                        dropdownDTO.setLabel(employee.getFirstname()); // Assuming dropdownDTO has setLabel method
-                        return dropdownDTO;
+                        EmployeeViewDto dto = new EmployeeViewDto();
+                        modelMapper.map(employee, dto);
+                        return dto;
                     })
                     .collect(Collectors.toSet());
 
-            DepartmentDto departmentDTO = new DepartmentDto(
-                    department.getDepartmentId(),
-                    department.getDepartmentName(),
-                    department.getDepartmentLead(),
-                    employeeDTOs // Add employee DTOs to the DepartmentDTO constructor
-            );
-            departmentDTOS.add(departmentDTO);
+            DepartmentViewDto departmentDTO = new DepartmentViewDto();
+            modelMapper.map(department, departmentDTO);
+            departmentDTO.setEmployees(employeeDTOs);
+
+            departmentDTOs.add(departmentDTO);
         }
 
         if (format.equalsIgnoreCase("csv")) {
-            // Assuming you have a method to send email with CSV attachment
             emailDepartmentService.sendEmailWithCSV(recipientEmail, departments);
         } else if (format.equalsIgnoreCase("pdf")) {
-            // Assuming you have a method to send email with PDF attachment
             emailDepartmentService.sendEmailWithPDF(recipientEmail, departments);
+        } else {
+            throw new IllegalArgumentException("Unsupported export format: " + format);
         }
-    }
-
-    public Map<String, Object> getDashboardData() {
-        Map<String, Object> dashboardData = new HashMap<>();
-
-        // Get total department count
-        long totalDepartments = departmentRepo.count();
-        dashboardData.put("totalDepartments", totalDepartments);
-
-        // Get count of distinct department names
-        long distinctDepartmentNames = departmentRepo.countDistinctDepartmentNames();
-        dashboardData.put("distinctDepartmentNames", distinctDepartmentNames);
-
-        // Get count of distinct department leads
-        long distinctDepartmentLeads = departmentRepo.countDistinctDepartmentLeads();
-        dashboardData.put("distinctDepartmentLeads", distinctDepartmentLeads);
-
-        // Get count by employee size
-        List<Map<String, Object>> employeeCounts = departmentRepo.countByEmployeeSize();
-        dashboardData.put("employeeCounts", employeeCounts);
-
-        // Get department summary
-        List<Map<String, Object>> departmentSummary = departmentRepo.getDepartmentSummary();
-        dashboardData.put("departmentSummary", departmentSummary);
-
-        return dashboardData;
     }
 
     @Override
     @Transactional
     public Page<DepartmentSimplifyDto> getDepartmentsSimplified(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<Department> departmentPage = departmentRepo.findDepartmentsWithEmployees(pageable);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Department> departmentPage = departmentRepo.findDepartmentsWithEmployees(pageable);
 
-            return departmentPage.map(department -> {
-                DepartmentSimplifyDto dto = new DepartmentSimplifyDto();
-                dto.setDepartmentId(department.getDepartmentId());
-                dto.setDepartmentName(department.getDepartmentName());
-                dto.setDepartmentLead(department.getDepartmentLead());
+        return departmentPage.map(department -> {
+            DepartmentSimplifyDto dto = new DepartmentSimplifyDto();
+            dto.setDepartmentId(department.getId());
+            dto.setDepartmentName(department.getDepartmentName());
+            dto.setDepartmentLead(department.getDepartmentLead());
 
-                dto.setEmployeeNames(department.getDepartmentLeads() != null ?
-                        department.getDepartmentLeads().stream()
-                                .filter(Objects::nonNull)
-                                .map(employee -> {
-                                    Map<String, Object> employeeMap = new HashMap<>();
-                                    employeeMap.put("employeeId", employee.getEmployeeId());
-                                    employeeMap.put("firstname", employee.getFirstname());
-                                    employeeMap.put("lastname", employee.getLastname());
-                                    return employeeMap;
-                                })
-                                .collect(Collectors.toSet()) :
-                        new HashSet<>());
+            dto.setEmployeeNames(department.getEmployees() != null ?
+                    department.getEmployees().stream()
+                            .filter(Objects::nonNull)
+                            .map(employee -> {
+                                Map<String, Object> employeeMap = new HashMap<>();
+                                employeeMap.put("employeeId", employee.getEmployeeId());
+                                employeeMap.put("firstname", employee.getFirstname());
+                                employeeMap.put("lastname", employee.getLastname());
+                                return employeeMap;
+                            })
+                            .collect(Collectors.toSet()) :
+                    new HashSet<>());
 
-                return dto;
-            });
-        } catch (Exception e) {
-            throw e;
-        }
+            return dto;
+        });
+    }
+
+    @Override
+    public Map<String, Object> getDashboardData() {
+        Map<String, Object> dashboardData = new HashMap<>();
+        dashboardData.put("totalDepartments", departmentRepo.count());
+        dashboardData.put("distinctDepartmentNames", departmentRepo.countDistinctDepartmentNames());
+        dashboardData.put("distinctDepartmentLeads", departmentRepo.countDistinctDepartmentLeads());
+        dashboardData.put("employeeCounts", departmentRepo.countByEmployeeSize());
+        dashboardData.put("departmentSummary", departmentRepo.getDepartmentSummary());
+        return dashboardData;
     }
 }

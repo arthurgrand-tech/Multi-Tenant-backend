@@ -1,6 +1,7 @@
 package com.ArthurGrand.module.employee.serviceImp;
 
 import com.ArthurGrand.admin.tenants.context.TenantContext;
+import com.ArthurGrand.common.enums.EmployeeStatus;
 import com.ArthurGrand.dto.EmployeeDto;
 import com.ArthurGrand.module.employee.entity.Employee;
 import com.ArthurGrand.module.employee.repository.EmployeeRepository;
@@ -40,8 +41,10 @@ public class EmployeeServiceImp implements EmployeeService {
             emp.setFirstname("Super");
             emp.setLastname("Admin");
             emp.setEmailId("superadmin@gmail.com");
-            String pswEncode=passwordEncoder.encode("123");
+            String pswEncode=passwordEncoder.encode("123qwe");
             emp.setPassword(pswEncode);
+            emp.setEmployeeStatus(EmployeeStatus.ACTIVE);
+            emp.setContactNumber("1234567890");
             employeeRepo.save(emp);
         } finally {
             TenantContext.clear(); // Clear to avoid leaking tenant context
@@ -70,6 +73,23 @@ public class EmployeeServiceImp implements EmployeeService {
         Employee employee = employeeRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
         return modelMapper.map(employee, EmployeeDto.class);
+    }
+
+    @Override
+    public String updateEmployee(Integer id, EmployeeDto employeeDto) {
+        Employee existing = employeeRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + id));
+        modelMapper.map(employeeDto,existing);
+        employeeRepo.save(existing);
+        return "Employee updated with ID: " + id;
+    }
+
+    @Override
+    public void deleteEmployee(Integer id) {
+        if (!employeeRepo.existsById(id)) {
+            throw new RuntimeException("Employee not found with ID: " + id);
+        }
+        employeeRepo.deleteById(id);
     }
 
 }

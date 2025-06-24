@@ -8,29 +8,26 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "Department")
-@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class Department {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer departmentId;
+    private Integer id;
 
-    @Column(name = "department_name", length = 255)
+    @Column(length = 255,unique = true,nullable = false)
     private String departmentName;
 
-    @Column(name = "department_lead", length = 255)
+    @Column(length = 255)
     private String departmentLead;
 
-    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
-    private Set<Employee> departmentLeads;
+    private Set<Employee> employees = new HashSet<>();
 
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;

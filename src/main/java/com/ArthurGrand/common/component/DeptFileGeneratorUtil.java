@@ -21,7 +21,7 @@ public class DeptFileGeneratorUtil {
             csvData.append("Department ID,Department Name,Department Lead\n");
 
             for (Department department : departments) {
-                csvData.append(department.getDepartmentId()).append(",")
+                csvData.append(department.getId()).append(",")
                         .append(department.getDepartmentName()).append(",")
                         .append(department.getDepartmentLead()).append("\n");
             }
@@ -48,7 +48,7 @@ public class DeptFileGeneratorUtil {
             table.addCell("Department Leads");
 
             for (Department department : departments) {
-                table.addCell(String.valueOf(department.getDepartmentId()));
+                table.addCell(String.valueOf(department.getId()));
                 table.addCell(department.getDepartmentName());
                 table.addCell(department.getDepartmentLead());
             }

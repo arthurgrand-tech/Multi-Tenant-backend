@@ -9,5 +9,7 @@ public interface EmployeeService{
     public void saveEmployee(EmployeeDto employee);
     List<EmployeeDto> getAllEmployees();
     EmployeeDto getEmployeeById(Integer id);
+    String updateEmployee(Integer id, EmployeeDto employeeDto);
+    void deleteEmployee(Integer id);
 
 }

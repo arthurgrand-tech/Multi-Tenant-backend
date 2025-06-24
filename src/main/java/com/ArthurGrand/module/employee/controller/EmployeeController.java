@@ -79,7 +79,7 @@ public class EmployeeController {
                 .body(new ApiResponse<>("Employee fetch successful",employees));
     }
 
-    @GetMapping("/{id:\\d+}")
+    @GetMapping("/getById/{id}")
     public ResponseEntity<ApiResponse<EmployeeDto>> getEmployeeById(@PathVariable Integer id) {
         Optional<Employee> employee=employeeRepo.findById(id);
         if(employee.isEmpty()){
@@ -89,5 +89,20 @@ public class EmployeeController {
         EmployeeDto employeeDto = employeeService.getEmployeeById(id);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponse<>("Employee fetch successful",employeeDto));
+    }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ApiResponse<String>> deleteEmployee(@PathVariable Integer id) {
+        Optional<Employee> employee=employeeRepo.findById(id);
+        if(employee.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("Employee not found",null));
+        }
+        employeeService.deleteEmployee(id);
+        return ResponseEntity.ok(new ApiResponse<>("Employee deleted with ID: " + id,null));
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<String> updateEmployee(@PathVariable Integer id, @RequestBody @Valid EmployeeDto employeeDto) {
+        return ResponseEntity.ok(employeeService.updateEmployee(id, employeeDto));
     }
 }

@@ -1,19 +1,17 @@
 package com.ArthurGrand.module.department.controller;
 
-import com.ArthurGrand.dto.DepartmentDto;
-import com.ArthurGrand.dto.DepartmentSimplifyDto;
-import com.ArthurGrand.dto.ExportDepartmentDto;
+import com.ArthurGrand.dto.*;
+import com.ArthurGrand.module.department.entity.Department;
+import com.ArthurGrand.module.department.repository.DepartmentRepository;
 import com.ArthurGrand.module.department.service.DepartmentService;
 import jakarta.mail.MessagingException;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("api/v1/Department")
@@ -21,40 +19,62 @@ import java.util.Map;
 public class DepartmentController {
 
     private final DepartmentService departmentService;
-    public DepartmentController(DepartmentService departmentService){
+    private final DepartmentRepository departmentRepo;
+    public DepartmentController(DepartmentService departmentService,
+                                DepartmentRepository departmentRepo){
         this.departmentService=departmentService;
+        this.departmentRepo=departmentRepo;
     }
 
-    @PostMapping(path = "/save")
-    private String saveDepartment(@RequestBody DepartmentDto departmentDTO)
-    {
-        String id = departmentService.addDepartment(departmentDTO);
-        return id;
+    @PostMapping("/add")
+    public ResponseEntity<ApiResponse<Integer>> addDepartment(@RequestBody @Valid DepartmentDto departmentDto) {
+        int id= departmentService.createDepartment(departmentDto);
+        return ResponseEntity.ok(new ApiResponse<>("Department create successful",id));
+    }
+
+    @GetMapping("/getById/{id}")
+    public ResponseEntity<ApiResponse<DepartmentViewDto>> getDepartmentById(@PathVariable Integer id) {
+        DepartmentViewDto departmentDto = departmentService.getDepartment(id);
+        if (departmentDto == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("Department not found", null));
+        }
+        return ResponseEntity.ok(new ApiResponse<>("Department retrieved successfully", departmentDto));
+    }
+
+    @GetMapping("/getAll")
+    public ResponseEntity<ApiResponse<Page<DepartmentViewDto>>> getAllDepartments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<DepartmentViewDto> departments = departmentService.getAllDepartments(page, size);
+        return ResponseEntity.ok(new ApiResponse<>("Departments retrieved successfully", departments));
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ApiResponse<DepartmentViewDto>> updateDepartment(
+            @PathVariable Integer id,
+            @RequestBody DepartmentViewDto dto) {
+
+        DepartmentViewDto updated = departmentService.updateDepartment(id, dto);
+        if (updated == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("Department not found", null));
+        }
+        return ResponseEntity.ok(new ApiResponse<>("Department updated successfully", updated));
     }
 
 
-
-    @GetMapping(path = "/getAllDepartment")
-    public List<DepartmentDto> getAllDepartment() {
-        List<DepartmentDto> allDepartment = departmentService.getAllDepartment();
-        return allDepartment;
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteDepartment(@PathVariable Integer id) {
+        boolean deleted = departmentService.deleteDepartment(id);
+        if (!deleted) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("Department not found", null));
+        }
+        return ResponseEntity.ok(new ApiResponse<>("Department deleted successfully", null));
     }
 
-
-    @PostMapping(path = "/update")
-    public Integer updateDepartment(@RequestBody DepartmentDto departmentDTO)
-    {
-        Integer id = departmentService.updateDepartment(departmentDTO);
-        return id;
-    }
-
-
-    @DeleteMapping(path = "/delete/{id}")
-    public String deleteDepartment(@PathVariable(value = "id") int id)
-    {
-        boolean deleteDepartment = departmentService.deleteDepartment(id);
-        return "deleted";
-    }
 
     @PostMapping(path="/export")
     public ResponseEntity<String> exportDepartmentData(@RequestBody ExportDepartmentDto requestBody) {
