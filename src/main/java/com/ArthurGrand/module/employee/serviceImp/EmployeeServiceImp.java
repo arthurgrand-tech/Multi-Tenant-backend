@@ -38,8 +38,8 @@ public class EmployeeServiceImp implements EmployeeService {
                 return;
             }
             Employee emp = new Employee();
-            emp.setFirstname("Super");
-            emp.setLastname("Admin");
+            emp.setFirstName("Super");
+            emp.setLastName("Admin");
             emp.setEmailId("superadmin@gmail.com");
             String pswEncode=passwordEncoder.encode("123qwe");
             emp.setPassword(pswEncode);

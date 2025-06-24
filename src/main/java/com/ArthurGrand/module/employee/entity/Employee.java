@@ -17,10 +17,10 @@ public class Employee {
     private String employeeId;
 
     @Column(length = 255, unique = true,nullable = false)
-    private String firstname;
+    private String firstName;
 
     @Column(length = 255)
-    private String lastname;
+    private String lastName;
 
     @Column(length = 255, unique = true, nullable = false)
     private String emailId;

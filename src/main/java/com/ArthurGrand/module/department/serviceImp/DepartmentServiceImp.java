@@ -186,8 +186,8 @@ public class DepartmentServiceImp implements DepartmentService {
                             .map(employee -> {
                                 Map<String, Object> employeeMap = new HashMap<>();
                                 employeeMap.put("employeeId", employee.getEmployeeId());
-                                employeeMap.put("firstname", employee.getFirstname());
-                                employeeMap.put("lastname", employee.getLastname());
+                                employeeMap.put("firstname", employee.getFirstName());
+                                employeeMap.put("lastname", employee.getLastName());
                                 return employeeMap;
                             })
                             .collect(Collectors.toSet()) :
