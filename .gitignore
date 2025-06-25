@@ -1,0 +1,10 @@
+# # === Maven Build Directory ===
+# /target/
+
+# # === Java Class Files ===
+# *.class
+
+# # === Package Files ===
+# *.jar
+# *.war
+# *.ear

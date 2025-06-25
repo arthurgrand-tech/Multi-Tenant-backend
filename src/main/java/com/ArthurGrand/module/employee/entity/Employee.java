@@ -1,0 +1,47 @@
+package com.ArthurGrand.module.employee.entity;
+
+import com.ArthurGrand.admin.dto.UserSessionDto;
+import com.ArthurGrand.admin.tenants.context.TenantContext;
+import com.ArthurGrand.common.enums.EmployeeStatus;
+import com.ArthurGrand.module.department.entity.Department;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.time.Instant;
+
+@Entity
+@Data
+public class Employee {
+    @Id
+    @GeneratedValue(strategy= GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(length = 255, unique = true, nullable = false)
+    private String employeeId;
+
+    @Column(length = 255, unique = true,nullable = false)
+    private String firstName;
+
+    @Column(length = 255)
+    private String lastName;
+
+    @Column(length = 255, unique = true, nullable = false)
+    private String emailId;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(length = 255)
+    private String contactNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EmployeeStatus employeeStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    @JsonBackReference
+    private Department department;
+
+}
