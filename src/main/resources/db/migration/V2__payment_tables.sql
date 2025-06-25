@@ -1,6 +1,4 @@
-/*
-Create this file: src/main/resources/db/migration/V2__payment_tables.sql
-
+-- src/main/resources/db/migration/V2__payment_tables.sql
 CREATE TABLE IF NOT EXISTS stripe_customers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id INT NOT NULL,
@@ -69,4 +67,3 @@ CREATE TABLE IF NOT EXISTS webhook_events (
     INDEX idx_event_type (event_type),
     INDEX idx_stripe_event (stripe_event_id)
 );
-*/

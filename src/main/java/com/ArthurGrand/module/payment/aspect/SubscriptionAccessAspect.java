@@ -28,9 +28,9 @@ public class SubscriptionAccessAspect {
         SubscriptionLevel requiredLevel = requiresSubscription.level();
 
         boolean hasAccess = switch (requiredLevel) {
-            case BASIC -> subscriptionAccessService.hasActiveSubscription();
+            case BASIC -> subscriptionAccessService.hasBasicAccess();
             case PREMIUM -> subscriptionAccessService.hasPremiumAccess();
-            case ENTERPRISE -> subscriptionAccessService.hasPremiumAccess(); // Extend as needed
+            case ENTERPRISE -> subscriptionAccessService.hasEnterpriseAccess();
         };
 
         if (!hasAccess) {
@@ -38,10 +38,16 @@ public class SubscriptionAccessAspect {
             error.put("error", "Subscription Required");
             error.put("message", "This feature requires an active " + requiredLevel.name().toLowerCase() + " subscription");
             error.put("required_level", requiredLevel.name());
+            error.put("upgrade_url", "/api/v1/payment/subscription/status");
 
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(error);
         }
 
         return joinPoint.proceed();
+    }
+
+    @Around("@within(requiresSubscription)")
+    public Object checkClassLevelSubscriptionAccess(ProceedingJoinPoint joinPoint, RequiresSubscription requiresSubscription) throws Throwable {
+        return checkSubscriptionAccess(joinPoint, requiresSubscription);
     }
 }

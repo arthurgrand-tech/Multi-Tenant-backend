@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/v1/tenants/**",
                                 "/api/v1/employee/**",
                                 "/api/v1/client/**",  // Add this line for client endpoints
+                                "/api/v1/payment/webhook",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
