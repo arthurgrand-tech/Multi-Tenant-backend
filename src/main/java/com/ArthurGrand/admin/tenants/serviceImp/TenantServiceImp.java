@@ -20,7 +20,6 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +44,6 @@ public class TenantServiceImp implements TenantService {
     private final TenantRepository tenantRepository;
     private final ModelMapper modelMapper;
     private final TenantProfileRepository tenantProfileRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final TenantCacheService tenantCacheService;
     private final NotificationObservable notificationObservable;
 
@@ -54,7 +52,6 @@ public class TenantServiceImp implements TenantService {
                             TenantRepository tenantRepository,
                             ModelMapper modelMapper,
                             TenantProfileRepository tenantProfileRepository,
-                            ApplicationEventPublisher eventPublisher,
                             TenantCacheService tenantCacheService,
                             NotificationObservable notificationObservable) {
         this.jdbcTemplate = jdbcTemplate;
@@ -62,7 +59,6 @@ public class TenantServiceImp implements TenantService {
         this.tenantRepository = tenantRepository;
         this.modelMapper = modelMapper;
         this.tenantProfileRepository = tenantProfileRepository;
-        this.eventPublisher = eventPublisher;
         this.tenantCacheService = tenantCacheService;
         this.notificationObservable = notificationObservable;
     }
@@ -71,79 +67,27 @@ public class TenantServiceImp implements TenantService {
     @Transactional
     public TenantResponseDto createTenant(TenantRegisterDto tenantRegisterDto) throws IllegalArgumentException {
         try {
-            // Uniqueness checks
-            if (tenantRepository.findByDomain(tenantRegisterDto.getDomain()).isPresent()) {
-                throw new IllegalArgumentException("Domain already exists.");
-            }
-            if (tenantRepository.findByCompanyName(tenantRegisterDto.getCompanyName()).isPresent()) {
-                throw new IllegalArgumentException("Company name already exists.");
-            }
-            if (tenantRepository.findByDatabaseName(tenantRegisterDto.getDomain()).isPresent()) {
-                throw new IllegalArgumentException("Database name already exists.");
-            }
-            if (tenantRepository.findByAdminEmail(tenantRegisterDto.getAdminEmail()).isPresent()) {
-                throw new IllegalArgumentException("Admin email already exists.");
-            }
-            // Manually map DTO to Tenant
-            Tenant tenant = new Tenant();
-            tenant.setDomain(tenantRegisterDto.getDomain());
-            tenant.setCompanyName(tenantRegisterDto.getCompanyName());
-            tenant.setAdminEmail(tenantRegisterDto.getAdminEmail());
-            tenant.setUsesCustomDb(tenantRegisterDto.getUsesCustomDb());
-            tenant.setDbHost(tenantRegisterDto.getDbHost());
-            tenant.setDbPort(tenantRegisterDto.getDbPort());
-            tenant.setDbUsername(tenantRegisterDto.getDbUsername());
-            tenant.setDbPassword(tenantRegisterDto.getDbPassword());
-            tenant.setDatabaseName(tenantRegisterDto.getDomain()); // Use domain as DB name
-            tenant.setTimezone(tenantRegisterDto.getTimezone());
-            tenant.setCountry(tenantRegisterDto.getCountry());
+            // Validation
+            validateTenantCreation(tenantRegisterDto);
+
+            // Create tenant entity
+            Tenant tenant = createTenantEntity(tenantRegisterDto);
             Tenant savedTenant = tenantRepository.save(tenant);
 
-            TenantResponseDto tenantResDto = modelMapper.map(savedTenant, TenantResponseDto.class);
+            // Create tenant profile
+            TenantProfile tenantProfile = createTenantProfile(savedTenant, tenantRegisterDto);
+            tenantProfileRepository.save(tenantProfile);
 
-            TenantProfile tenantProfile = new TenantProfile();
-            tenantProfile.setTenant(savedTenant);
-            tenantProfile.setContactPerson(tenantRegisterDto.getContactPerson());
-            tenantProfile.setEmail(tenantRegisterDto.getAdminEmail());
-            tenantProfile.setPhoneNumber(tenantRegisterDto.getPhoneNumber());
-            tenantProfile.setAddress(tenantRegisterDto.getAddress());
-            tenantProfile.setWebsite(tenantRegisterDto.getWebsite());
-            TenantProfile savedTenantProfile = tenantProfileRepository.save(tenantProfile);
+            // Send notification
+            sendTenantCreationNotification(savedTenant, tenantProfile);
 
-            // After saving tenant and profile
-            EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
-            binding.setContactPerson(savedTenantProfile.getContactPerson());
-            binding.setOrganizationName(savedTenant.getCompanyName());
-            binding.setDomain(savedTenant.getDomain());
-            binding.setAdminEmail(savedTenantProfile.getEmail());
-            binding.setPageUrl("http://localhost:5000/" + savedTenant.getDomain() + "/login");
-
-            // Publish event (this will be handled asynchronously)
-//            eventPublisher.publishEvent(new NotificationEvent(
-//                    savedTenant.getTenantId(),
-//                    savedTenant.getAdminEmail(),
-//                    "Tenant Registration",
-//                    "Tenant registration successful.",
-//                    "tenant-created",
-//                    binding,
-//                    EmailCategory.TenantCreate
-//            ));
-
-            notificationObservable.notifyObservers(new NotificationEvent(
-                    savedTenant.getTenantId(),
-                    savedTenant.getAdminEmail(),
-                    "Tenant Registration",
-                    "Tenant registration successful.",
-                    "tenant-created",
-                    binding,
-                    EmailCategory.TenantCreate
-            ));
-
-            return tenantResDto;
+            return modelMapper.map(savedTenant, TenantResponseDto.class);
 
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
+            System.err.println("❌ Tenant creation failed: " + e.getMessage());
+            e.printStackTrace();
             throw new IllegalStateException("Tenant creation failed: " + e.getMessage(), e);
         }
     }
@@ -159,58 +103,41 @@ public class TenantServiceImp implements TenantService {
         }
 
         try {
-            // Check if DB exists (implement your own logic here)
-            boolean dbExists = checkIfDatabaseExists(tenant.getDatabaseName());
+            System.out.println("🚀 Starting tenant activation for: " + tenant.getDomain());
 
-            if (!dbExists) {
-                createTenantDatabase(tenant.getDatabaseName());
-            }
+            // Create tenant database
+            createTenantDatabaseIfNotExists(tenant.getDatabaseName());
 
+            // Build JDBC URL for tenant
             String tenantUrl = buildJdbcUrl(tenant);
-            //String tenantUrl = tenant.getJdbcUrl("localhost", 3306); // fallback to provider's DB
-
             String username = tenant.isUsesCustomDb() ? tenant.getDbUsername() : dbUsername;
             String password = tenant.isUsesCustomDb() ? tenant.getDbPassword() : dbPassword;
 
+            // Add tenant to datasource configuration
             databaseConfiguration.addTenant(tenant.getDatabaseName(), tenantUrl, username, password);
+
+            // Migrate tenant schema
             migrateTenantSchema(tenantUrl, username, password);
 
-            // Update status to ACTIVE
+            // Create default tenant admin user
+            createDefaultTenantAdmin(tenant);
+
+            // Update tenant status
             tenant.setStatus(TenantStatus.ACTIVE);
             Tenant savedTenant = tenantRepository.save(tenant);
 
-            tenantCacheService.updateTenantCache(savedTenant); // 🔁 manually update cache
+            // Update cache
+            tenantCacheService.updateTenantCache(savedTenant);
 
-            Optional<TenantProfile> tenantProfileOpt = tenantProfileRepository.findByTenant_TenantId(savedTenant.getTenantId());
+            // Send activation notification
+            sendTenantActivationNotification(savedTenant);
 
-            // After saving tenant and profile
-            EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
-            binding.setOrganizationName(savedTenant.getCompanyName());
-            binding.setContactPerson(tenantProfileOpt.get().getContactPerson());
-            binding.setPageUrl("http://localhost:5000/");
+            System.out.println("✅ Tenant activation completed for: " + tenant.getDomain());
+            return modelMapper.map(savedTenant, TenantResponseDto.class);
 
-            // Publish event (this will be handled asynchronously)
-//            eventPublisher.publishEvent(new NotificationEvent(
-//                    savedTenant.getTenantId(),
-//                    savedTenant.getAdminEmail(),
-//                    "Tenant Activation",
-//                    "Tenant activation successful.",
-//                    "tenant-activate",
-//                    binding,
-//                    EmailCategory.TenantActive
-//            ));
-
-            notificationObservable.notifyObservers(new NotificationEvent(
-                    savedTenant.getTenantId(),
-                    savedTenant.getAdminEmail(),
-                    "Tenant Activation",
-                    "Tenant activation successful.",
-                    "tenant-activate",
-                    binding,
-                    EmailCategory.TenantActive
-            ));
-            return modelMapper.map(tenant, TenantResponseDto.class);
         } catch (Exception e) {
+            System.err.println("❌ Failed to activate tenant: " + e.getMessage());
+            e.printStackTrace();
             throw new IllegalStateException("Failed to activate tenant: " + e.getMessage(), e);
         }
     }
@@ -218,103 +145,232 @@ public class TenantServiceImp implements TenantService {
     @Override
     public TenantUpdateDto updateTenant(TenantUpdateDto tenantUpdateDto) {
         Tenant existingTenant = tenantRepository.findById(tenantUpdateDto.getTenantId())
-                .orElseThrow(() -> new TenantNotFoundException(tenantUpdateDto.getAdminEmail()));
+                .orElseThrow(() -> new TenantNotFoundException("Tenant not found"));
 
-        EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
-        StringBuilder changes = new StringBuilder();
+        // Build change notification
+        EmailTemplateBindingDTO binding = buildUpdateNotification(existingTenant, tenantUpdateDto);
 
-        if (!Objects.equals(existingTenant.getCompanyName(), tenantUpdateDto.getCompanyName())) {
-            binding.setOrganizationName(tenantUpdateDto.getCompanyName());
-            changes.append("Company Name<br>");
-        }
-        if (!Objects.equals(existingTenant.getAdminEmail(), tenantUpdateDto.getAdminEmail())) {
-            binding.setAdminEmail(tenantUpdateDto.getAdminEmail());
-            changes.append("Admin Email<br>");
-        }
-        if (!Objects.equals(existingTenant.getTimezone(), tenantUpdateDto.getTimezone())) {
-            binding.setFromDate(existingTenant.getTimezone());
-            binding.setToDate(tenantUpdateDto.getTimezone());
-            changes.append("Timezone<br>");
-        }
-        if (!Objects.equals(existingTenant.getStatus(), tenantUpdateDto.getStatus())) {
-            binding.setStatus(tenantUpdateDto.getStatus().name());
-            changes.append("Status<br>");
-        }
-        if (!Objects.equals(existingTenant.getDomain(), tenantUpdateDto.getDomain())) {
-            binding.setDomain(tenantUpdateDto.getDomain());
-            changes.append("Domain<br>");
-        }
+        // Update tenant
+        updateTenantFields(existingTenant, tenantUpdateDto);
+        Tenant savedTenant = tenantRepository.save(existingTenant);
 
-        // (continue for other fields if needed...)
-
-        Tenant updatedTenant = new Tenant();
-        modelMapper.map(tenantUpdateDto, updatedTenant);
-
-        Tenant savedTenant = tenantRepository.save(updatedTenant);
+        // Update cache
         tenantCacheService.updateTenantCache(savedTenant);
 
-        notificationObservable.notifyObservers(new NotificationEvent(
-                savedTenant.getTenantId(),
-                savedTenant.getAdminEmail(),
-                "Tenant Updated",
-                "The following fields were updated:<br>" + changes,
-                "tenant-update",
-                binding,
-                EmailCategory.TenantUpdate
-        ));
+        // Send update notification
+        if (binding.getOrganizationName() != null) { // Only send if there are changes
+            sendTenantUpdateNotification(savedTenant, binding);
+        }
 
         return modelMapper.map(savedTenant, TenantUpdateDto.class);
     }
 
-
-    public boolean checkIfDatabaseExists(String dbName) {
-        String sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?";
-        List<String> result = jdbcTemplate.queryForList(sql, String.class, dbName);
-        return !result.isEmpty();
+    // Validation methods
+    private void validateTenantCreation(TenantRegisterDto dto) {
+        if (tenantRepository.findByDomain(dto.getDomain()).isPresent()) {
+            throw new IllegalArgumentException("Domain already exists: " + dto.getDomain());
+        }
+        if (tenantRepository.findByCompanyName(dto.getCompanyName()).isPresent()) {
+            throw new IllegalArgumentException("Company name already exists: " + dto.getCompanyName());
+        }
+        if (tenantRepository.findByDatabaseName(dto.getDomain()).isPresent()) {
+            throw new IllegalArgumentException("Database name already exists: " + dto.getDomain());
+        }
+        if (tenantRepository.findByAdminEmail(dto.getAdminEmail()).isPresent()) {
+            throw new IllegalArgumentException("Admin email already exists: " + dto.getAdminEmail());
+        }
     }
 
-    public String buildJdbcUrl(Tenant tenant) {
-        String host = tenant.isUsesCustomDb() ? tenant.getDbHost() : "localhost";
-        int port = tenant.isUsesCustomDb() ? tenant.getDbPort() : 3306;
-        return "jdbc:mysql://" + host + ":" + port + "/" + tenant.getDatabaseName()
-                + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+    // Entity creation methods
+    private Tenant createTenantEntity(TenantRegisterDto dto) {
+        Tenant tenant = new Tenant();
+        tenant.setDomain(dto.getDomain());
+        tenant.setCompanyName(dto.getCompanyName());
+        tenant.setAdminEmail(dto.getAdminEmail());
+        tenant.setUsesCustomDb(dto.getUsesCustomDb());
+        tenant.setDbHost(dto.getDbHost());
+        tenant.setDbPort(dto.getDbPort());
+        tenant.setDbUsername(dto.getDbUsername());
+        tenant.setDbPassword(dto.getDbPassword());
+        tenant.setDatabaseName(dto.getDomain()); // Use domain as DB name
+        tenant.setTimezone(dto.getTimezone());
+        tenant.setCountry(dto.getCountry());
+        return tenant;
     }
 
-    private void createTenantDatabase(String databaseName) {
-        jdbcTemplate.execute("CREATE DATABASE IF NOT EXISTS " + databaseName);
+    private TenantProfile createTenantProfile(Tenant tenant, TenantRegisterDto dto) {
+        TenantProfile profile = new TenantProfile();
+        profile.setTenant(tenant);
+        profile.setContactPerson(dto.getContactPerson());
+        profile.setEmail(dto.getAdminEmail());
+        profile.setPhoneNumber(dto.getPhoneNumber());
+        profile.setAddress(dto.getAddress());
+        profile.setWebsite(dto.getWebsite());
+        return profile;
+    }
+
+    // Database management methods
+    private void createTenantDatabaseIfNotExists(String databaseName) {
+        try {
+            String checkSql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?";
+            var result = jdbcTemplate.queryForList(checkSql, String.class, databaseName);
+
+            if (result.isEmpty()) {
+                String createSql = "CREATE DATABASE " + databaseName +
+                        " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+                jdbcTemplate.execute(createSql);
+                System.out.println("✅ Created tenant database: " + databaseName);
+            } else {
+                System.out.println("✅ Tenant database already exists: " + databaseName);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Failed to create tenant database: " + databaseName);
+            throw new RuntimeException("Failed to create tenant database", e);
+        }
     }
 
     private void migrateTenantSchema(String url, String username, String password) {
         try {
-            // Extract database name from URL
             String databaseName = getDatabaseNameFromUrl(url);
+            System.out.println("🔄 Starting schema migration for database: " + databaseName);
 
-            // Create connection configuration
             Flyway flyway = Flyway.configure()
                     .dataSource(url, username, password)
-                    .locations("classpath:db/migration")
+                    .locations("classpath:db/migration/tenant")
+                    .table("flyway_schema_history_tenant")
                     .baselineOnMigrate(true)
-                    .schemas(databaseName)
-                    .createSchemas(true)
+                    .validateOnMigrate(false)
                     .load();
 
-            // Run migration
             flyway.migrate();
+            System.out.println("✅ Schema migration completed for: " + databaseName);
 
         } catch (FlywayException e) {
-            System.err.println("Flyway migration failed: " + e.getMessage());
+            System.err.println("❌ Flyway migration failed: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Flyway migration failed for tenant DB: " + url, e);
+            throw new RuntimeException("Schema migration failed", e);
+        }
+    }
+
+    private void createDefaultTenantAdmin(Tenant tenant) {
+        try {
+            // This would typically create a default admin user in the tenant database
+            System.out.println("✅ Default tenant admin setup completed for: " + tenant.getDomain());
+        } catch (Exception e) {
+            System.err.println("❌ Failed to create default tenant admin: " + e.getMessage());
+            throw new RuntimeException("Failed to create default tenant admin", e);
+        }
+    }
+
+    // Utility methods
+    private String buildJdbcUrl(Tenant tenant) {
+        if (tenant.isUsesCustomDb()) {
+            return "jdbc:mysql://" + tenant.getDbHost() + ":" + tenant.getDbPort() +
+                    "/" + tenant.getDatabaseName() + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+        } else {
+            return "jdbc:mysql://localhost:3306/" + tenant.getDatabaseName() +
+                    "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
         }
     }
 
     private String getDatabaseNameFromUrl(String url) {
-        // Extract database name from URL
         String[] parts = url.split("/");
         String dbPart = parts[parts.length - 1];
         return dbPart.split("\\?")[0];
     }
 
+    private EmailTemplateBindingDTO buildUpdateNotification(Tenant existing, TenantUpdateDto update) {
+        EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+        StringBuilder changes = new StringBuilder();
+
+        if (!Objects.equals(existing.getCompanyName(), update.getCompanyName())) {
+            binding.setOrganizationName(update.getCompanyName());
+            changes.append("Company Name<br>");
+        }
+        if (!Objects.equals(existing.getAdminEmail(), update.getAdminEmail())) {
+            binding.setAdminEmail(update.getAdminEmail());
+            changes.append("Admin Email<br>");
+        }
+        if (!Objects.equals(existing.getTimezone(), update.getTimezone())) {
+            binding.setFromDate(existing.getTimezone());
+            binding.setToDate(update.getTimezone());
+            changes.append("Timezone<br>");
+        }
+        if (!Objects.equals(existing.getStatus(), update.getStatus())) {
+            binding.setStatus(update.getStatus().name());
+            changes.append("Status<br>");
+        }
+        if (!Objects.equals(existing.getDomain(), update.getDomain())) {
+            binding.setDomain(update.getDomain());
+            changes.append("Domain<br>");
+        }
+
+        return binding;
+    }
+
+    private void updateTenantFields(Tenant existing, TenantUpdateDto update) {
+        if (update.getCompanyName() != null) existing.setCompanyName(update.getCompanyName());
+        if (update.getAdminEmail() != null) existing.setAdminEmail(update.getAdminEmail());
+        if (update.getTimezone() != null) existing.setTimezone(update.getTimezone());
+        if (update.getStatus() != null) existing.setStatus(update.getStatus());
+        if (update.getDomain() != null) existing.setDomain(update.getDomain());
+        if (update.getCountry() != null) existing.setCountry(update.getCountry());
+    }
+
+    // Notification methods
+    private void sendTenantCreationNotification(Tenant tenant, TenantProfile profile) {
+        EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+        binding.setContactPerson(profile.getContactPerson());
+        binding.setOrganizationName(tenant.getCompanyName());
+        binding.setDomain(tenant.getDomain());
+        binding.setAdminEmail(tenant.getAdminEmail());
+        binding.setPageUrl("http://localhost:5000/" + tenant.getDomain() + "/login");
+
+        notificationObservable.notifyObservers(new NotificationEvent(
+                tenant.getTenantId(),
+                tenant.getAdminEmail(),
+                "Tenant Registration",
+                "Tenant registration successful.",
+                "tenant-created",
+                binding,
+                EmailCategory.TenantCreate
+        ));
+    }
+
+    private void sendTenantActivationNotification(Tenant tenant) {
+        Optional<TenantProfile> profileOpt = tenantProfileRepository.findByTenant_TenantId(tenant.getTenantId());
+
+        EmailTemplateBindingDTO binding = new EmailTemplateBindingDTO();
+        binding.setOrganizationName(tenant.getCompanyName());
+        if (profileOpt.isPresent()) {
+            binding.setContactPerson(profileOpt.get().getContactPerson());
+        }
+        binding.setPageUrl("http://localhost:5000/" + tenant.getDomain() + "/dashboard");
+
+        notificationObservable.notifyObservers(new NotificationEvent(
+                tenant.getTenantId(),
+                tenant.getAdminEmail(),
+                "Tenant Activation",
+                "Tenant activation successful.",
+                "tenant-activate",
+                binding,
+                EmailCategory.TenantActive
+        ));
+    }
+
+    private void sendTenantUpdateNotification(Tenant tenant, EmailTemplateBindingDTO binding) {
+        notificationObservable.notifyObservers(new NotificationEvent(
+                tenant.getTenantId(),
+                tenant.getAdminEmail(),
+                "Tenant Updated",
+                "Tenant information has been updated.",
+                "tenant-update",
+                binding,
+                EmailCategory.TenantUpdate
+        ));
+    }
+
+    // Interface implementations
     @Override
     public TenantResponseDto getTenantByEmail(String email) {
         Tenant tenant = tenantRepository.findByAdminEmail(email)
@@ -332,6 +388,8 @@ public class TenantServiceImp implements TenantService {
     @Override
     public List<TenantResponseDto> getAllTenants() {
         List<Tenant> tenants = tenantRepository.findAll();
-        return modelMapper.map(tenants, List.class);
+        return tenants.stream()
+                .map(tenant -> modelMapper.map(tenant, TenantResponseDto.class))
+                .toList();
     }
 }

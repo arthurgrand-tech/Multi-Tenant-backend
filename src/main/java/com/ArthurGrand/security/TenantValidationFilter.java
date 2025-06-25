@@ -41,13 +41,16 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("🔍 Processing request: " + path);
 
-        // Skip tenant validation for Swagger, tenant creation, and webhook
-        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")
-                || path.equals("/swagger-ui.html")
-                || path.startsWith("/api/v1/tenants/createTenant")
-                || path.equals("/api/v1/payment/webhook")) {
-            System.out.println("⏭️  Skipping tenant validation for path: " + path);
-            filterChain.doFilter(request, response);
+        // Skip tenant validation for public endpoints
+        if (shouldSkipValidation(path)) {
+            System.out.println("⏭️ Skipping tenant validation for path: " + path);
+            // Set master context for public endpoints
+            TenantContext.setCurrentTenant("master");
+            try {
+                filterChain.doFilter(request, response);
+            } finally {
+                TenantContext.clear();
+            }
             return;
         }
 
@@ -59,25 +62,42 @@ public class TenantValidationFilter extends OncePerRequestFilter {
 
         if (userType == null || userType.isEmpty()) {
             System.out.println("❌ X-User-Type header is missing");
-            handleException(response, "X-User-Type header is missing", HttpServletResponse.SC_BAD_REQUEST);
+            handleException(response, "X-User-Type header is required", HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
-        // Master user — allow request but do NOT set tenant context
+        // Master user - use master database
         if ("MASTER".equalsIgnoreCase(userType)) {
-            System.out.println("👑 Master user detected - no tenant context will be set");
-            filterChain.doFilter(request, response);
+            System.out.println("👑 Master user detected - using master database");
+            TenantContext.setCurrentTenant("master");
+
+            // Extract employee ID from JWT for master user
+            Integer employeeId = extractEmployeeIdFromJWT(request);
+            if (employeeId != null) {
+                UserSessionDto sessionDto = new UserSessionDto();
+                sessionDto.setEmployeeId(employeeId);
+                sessionDto.setTenantId(0); // Master tenant ID
+                sessionDto.setDomain("master");
+                sessionDto.setTimezone("UTC");
+                TenantContext.setUserSession(sessionDto);
+            }
+
+            try {
+                filterChain.doFilter(request, response);
+            } finally {
+                TenantContext.clear();
+            }
             return;
         }
 
-        // Tenant user — tenant ID is required
+        // Tenant user - tenant ID is required
         if (tenantId == null || tenantId.isEmpty()) {
-            System.out.println("❌ Tenant ID is missing for non-master user");
-            handleException(response, "Tenant ID is missing for non-master user", HttpServletResponse.SC_BAD_REQUEST);
+            System.out.println("❌ Tenant ID is missing for tenant user");
+            handleException(response, "X-Tenant-ID header is required for tenant users", HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
-        // 🚫 Block clients from accessing the master DB directly
+        // Block direct access to master database via tenant header
         if ("master".equalsIgnoreCase(tenantId)) {
             System.out.println("🚫 Blocked attempt to access master database via tenant header");
             handleException(response, "Access to master database via tenant header is forbidden", HttpServletResponse.SC_FORBIDDEN);
@@ -104,37 +124,26 @@ public class TenantValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ✅ Set tenant context using database name
+        // Set tenant context
         System.out.println("✅ Setting tenant context to: " + tenant.getDatabaseName());
         TenantContext.setCurrentTenant(tenant.getDatabaseName());
 
-        // 🔐 Extract employeeId from JWT
-        Integer employeeId = null;
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7); // remove "Bearer "
-            try {
-                Claims claims = jwtUtil.parseToken(token);
-                employeeId = claims.get("employeeId", Integer.class);
-                System.out.println("👤 Extracted employeeId from token: " + employeeId);
-            } catch (Exception e) {
-                System.out.println("⚠️ Failed to parse JWT token: " + e.getMessage());
-            }
-        }
+        // Extract employeeId from JWT
+        Integer employeeId = extractEmployeeIdFromJWT(request);
 
         UserSessionDto sessionDto = new UserSessionDto();
         sessionDto.setTenantId(tenant.getTenantId());
         sessionDto.setDomain(tenant.getDomain());
         sessionDto.setTimezone(tenant.getTimezone());
-        if(employeeId != null){
+        if (employeeId != null) {
             sessionDto.setEmployeeId(employeeId);
         }
 
         TenantContext.setUserSession(sessionDto);
 
-        // CRITICAL: Add debug logging for payment endpoints
+        // Debug logging for payment endpoints
         if (path.startsWith("/api/v1/payment")) {
-            System.out.println("💳 Payment endpoint detected - Tenant context set: " + TenantContext.getCurrentTenant());
+            System.out.println("💳 Payment endpoint - Tenant context: " + TenantContext.getCurrentTenant());
             System.out.println("💳 User session: " + TenantContext.getUserSession());
         }
 
@@ -143,8 +152,36 @@ public class TenantValidationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             System.out.println("🧹 Clearing tenant context for: " + tenant.getDatabaseName());
-            TenantContext.clear(); // Always clear after the request
+            TenantContext.clear();
         }
+    }
+
+    private boolean shouldSkipValidation(String path) {
+        return path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.equals("/swagger-ui.html") ||
+                path.startsWith("/api/v1/tenants/createTenant") ||
+                path.startsWith("/api/v1/tenants/") && path.endsWith("/activate") ||
+                path.equals("/api/v1/payment/webhook") ||
+                path.equals("/api/v1/auth/login") ||
+                path.startsWith("/webjars/") ||
+                path.startsWith("/swagger-resources/");
+    }
+
+    private Integer extractEmployeeIdFromJWT(HttpServletRequest request) {
+        try {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Claims claims = jwtUtil.parseToken(token);
+                Integer employeeId = claims.get("employeeId", Integer.class);
+                System.out.println("👤 Extracted employeeId from token: " + employeeId);
+                return employeeId;
+            }
+        } catch (Exception e) {
+            System.out.println("⚠️ Failed to parse JWT token: " + e.getMessage());
+        }
+        return null;
     }
 
     private void handleException(HttpServletResponse response, String message, int status) throws IOException {
