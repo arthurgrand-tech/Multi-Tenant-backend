@@ -42,6 +42,7 @@ public class EmployeeServiceImp implements EmployeeService {
                 return;
             }
             Employee emp = new Employee();
+            emp.setEmployeeId("AGT000");
             emp.setFirstName("Super");
             emp.setLastName("Admin");
             emp.setEmailId("superadmin@gmail.com");

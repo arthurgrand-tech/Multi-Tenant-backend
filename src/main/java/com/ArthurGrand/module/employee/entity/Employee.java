@@ -13,7 +13,7 @@ public class Employee {
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(length = 255, unique = true)
+    @Column(length = 255, unique = true, nullable = false)
     private String employeeId;
 
     @Column(length = 255, unique = true,nullable = false)
@@ -39,4 +39,6 @@ public class Employee {
     @JoinColumn(name = "department_id")
     @JsonBackReference
     private Department department;
+
+
 }

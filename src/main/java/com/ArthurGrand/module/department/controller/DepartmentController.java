@@ -19,14 +19,11 @@ import java.util.*;
 public class DepartmentController {
 
     private final DepartmentService departmentService;
-    private final DepartmentRepository departmentRepo;
-    public DepartmentController(DepartmentService departmentService,
-                                DepartmentRepository departmentRepo){
+    public DepartmentController(DepartmentService departmentService){
         this.departmentService=departmentService;
-        this.departmentRepo=departmentRepo;
     }
 
-    @PostMapping("/add")
+    @PostMapping("/save")
     public ResponseEntity<ApiResponse<Integer>> addDepartment(@RequestBody @Valid DepartmentDto departmentDto) {
         int id= departmentService.createDepartment(departmentDto);
         return ResponseEntity.ok(new ApiResponse<>("Department create successful",id));
@@ -42,7 +39,7 @@ public class DepartmentController {
         return ResponseEntity.ok(new ApiResponse<>("Department retrieved successfully", departmentDto));
     }
 
-    @GetMapping("/getAll")
+    @GetMapping("/getAllDepartment")
     public ResponseEntity<ApiResponse<Page<DepartmentViewDto>>> getAllDepartments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
