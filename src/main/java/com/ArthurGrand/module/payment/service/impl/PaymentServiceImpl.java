@@ -62,10 +62,17 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public SubscriptionResponse createSubscription(CreateSubscriptionRequest request) {
         try {
+            // ADD DEBUG SECTION
             UserSessionDto session = TenantContext.getUserSession();
+            String currentTenant = TenantContext.getCurrentTenant();
+
+            System.out.println("💳 Payment Service - Current Tenant: " + currentTenant);
+            System.out.println("💳 Payment Service - User Session: " + session);
+
             if (session == null) {
                 throw new IllegalStateException("No tenant context found");
             }
+            // END DEBUG SECTION
 
             // Check if customer already exists
             Optional<StripeCustomer> existingCustomer = stripeCustomerRepository.findByTenantId(session.getTenantId());

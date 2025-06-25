@@ -23,13 +23,13 @@ public class TenantValidationFilter extends OncePerRequestFilter {
     private final TenantStatusValidator tenantStatusValidator;
     private final TenantCacheService tenantCacheService;
     private final JwtUtil jwtUtil;
-    public TenantValidationFilter(
-                                  TenantStatusValidator tenantStatusValidator,
+
+    public TenantValidationFilter(TenantStatusValidator tenantStatusValidator,
                                   TenantCacheService tenantCacheService,
                                   JwtUtil jwtUtil) {
         this.tenantStatusValidator = tenantStatusValidator;
-        this.tenantCacheService=tenantCacheService;
-        this.jwtUtil=jwtUtil;
+        this.tenantCacheService = tenantCacheService;
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
@@ -41,10 +41,11 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("🔍 Processing request: " + path);
 
-        // Skip tenant validation for Swagger and tenant creation
+        // Skip tenant validation for Swagger, tenant creation, and webhook
         if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")
                 || path.equals("/swagger-ui.html")
-                || path.startsWith("/api/v1/tenants/createTenant")) {
+                || path.startsWith("/api/v1/tenants/createTenant")
+                || path.equals("/api/v1/payment/webhook")) {
             System.out.println("⏭️  Skipping tenant validation for path: " + path);
             filterChain.doFilter(request, response);
             return;
@@ -130,6 +131,13 @@ public class TenantValidationFilter extends OncePerRequestFilter {
         }
 
         TenantContext.setUserSession(sessionDto);
+
+        // CRITICAL: Add debug logging for payment endpoints
+        if (path.startsWith("/api/v1/payment")) {
+            System.out.println("💳 Payment endpoint detected - Tenant context set: " + TenantContext.getCurrentTenant());
+            System.out.println("💳 User session: " + TenantContext.getUserSession());
+        }
+
         try {
             System.out.println("🔄 Proceeding with request for tenant: " + tenant.getDatabaseName());
             filterChain.doFilter(request, response);

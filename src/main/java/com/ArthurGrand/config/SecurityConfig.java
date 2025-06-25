@@ -27,7 +27,7 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CustomUserDetailsService customUserDetailsService,
-                          TenantValidationFilter tenantValidationFilter){
+                          TenantValidationFilter tenantValidationFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.customUserDetailsService = customUserDetailsService;
         this.tenantValidationFilter = tenantValidationFilter;
@@ -37,15 +37,16 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-                // CRITICAL: TenantValidationFilter MUST come FIRST
+                // CRITICAL: Filter order is very important
+                // 1. TenantValidationFilter MUST come FIRST to set tenant context
                 .addFilterBefore(tenantValidationFilter, UsernamePasswordAuthenticationFilter.class)
-                // THEN JWT filter comes after tenant validation
-                .addFilterAfter(jwtAuthFilter, TenantValidationFilter.class)
+                // 2. JWT filter comes AFTER tenant validation but BEFORE UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/tenants/**",
-                                "/api/v1/payment/webhook",  // Only webhook is public
+                                "/api/v1/payment/webhook",  // Only webhook endpoint is public
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
@@ -53,6 +54,7 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
+                        // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -64,7 +66,7 @@ public class SecurityConfig {
     public DaoAuthenticationProvider authProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(new BCryptPasswordEncoder());
+        authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
 

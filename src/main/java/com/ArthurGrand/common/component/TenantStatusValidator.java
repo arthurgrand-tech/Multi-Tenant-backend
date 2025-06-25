@@ -35,4 +35,5 @@ public class TenantStatusValidator {
         response.setContentType("application/json");
         response.getWriter().write("{\"error\": \"" + message + "\"}");
     }
+
 }
