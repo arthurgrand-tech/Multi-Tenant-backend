@@ -5,10 +5,12 @@ import com.ArthurGrand.admin.dto.UserSessionDto;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.dto.ApiResponse;
 import com.ArthurGrand.dto.EmployeeDto;
+import com.ArthurGrand.dto.EmployeeViewDto;
 import com.ArthurGrand.module.employee.entity.Employee;
 import com.ArthurGrand.module.employee.repository.EmployeeRepository;
 import com.ArthurGrand.module.employee.service.EmployeeService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -62,7 +64,7 @@ public class EmployeeController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>("Validation Error",error));
         }
-        boolean emailExists= employeeRepo.existsByEmailid(employeeDto.getEmailid());
+        boolean emailExists= employeeRepo.existsByEmailId(employeeDto.getEmailId());
        if(emailExists){
            return ResponseEntity.status(HttpStatus.CONFLICT)
                    .body(new ApiResponse<>("Email Already exists",null));
@@ -72,22 +74,37 @@ public class EmployeeController {
                 .body(new ApiResponse<>("Employee saved successfully.",null));
     }
     @GetMapping("/all")
-    public ResponseEntity<ApiResponse<List<EmployeeDto>>> getAllEmployees() {
-        List<EmployeeDto> employees = employeeService.getAllEmployees();
-        UserSessionDto us= TenantContext.getUserSession();
+    public ResponseEntity<ApiResponse<Page<EmployeeViewDto>>> getAllEmployees(@RequestParam(defaultValue = "0") int page,
+                                                                          @RequestParam(defaultValue = "10") int size) {
+        Page<EmployeeViewDto> employees = employeeService.getAllEmployees(page,size);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponse<>("Employee fetch successful",employees));
     }
 
-    @GetMapping("/{id:\\d+}")
-    public ResponseEntity<ApiResponse<EmployeeDto>> getEmployeeById(@PathVariable Integer id) {
+    @GetMapping("/getById/{id}")
+    public ResponseEntity<ApiResponse<EmployeeViewDto>> getEmployeeById(@PathVariable Integer id) {
         Optional<Employee> employee=employeeRepo.findById(id);
         if(employee.isEmpty()){
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>("Employee not found",null));
         }
-        EmployeeDto employeeDto = employeeService.getEmployeeById(id);
+        EmployeeViewDto employeeDto = employeeService.getEmployeeById(id);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponse<>("Employee fetch successful",employeeDto));
+    }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ApiResponse<String>> deleteEmployee(@PathVariable Integer id) {
+        Optional<Employee> employee=employeeRepo.findById(id);
+        if(employee.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("Employee not found",null));
+        }
+        employeeService.deleteEmployee(id);
+        return ResponseEntity.ok(new ApiResponse<>("Employee deleted with ID: " + id,null));
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<String> updateEmployee(@PathVariable Integer id, @RequestBody @Valid EmployeeDto employeeDto) {
+        return ResponseEntity.ok(employeeService.updateEmployee(id, employeeDto));
     }
 }

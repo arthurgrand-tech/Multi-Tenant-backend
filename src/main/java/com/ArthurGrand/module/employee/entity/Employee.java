@@ -1,5 +1,8 @@
 package com.ArthurGrand.module.employee.entity;
 
+import com.ArthurGrand.common.enums.EmployeeStatus;
+import com.ArthurGrand.module.department.entity.Department;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -8,20 +11,34 @@ import lombok.Data;
 public class Employee {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer employeeId;
+    private Integer id;
 
-    @Column(name = "first_name" , length = 255, nullable = false)
-    private String firstname;
+    @Column(length = 255, unique = true, nullable = false)
+    private String employeeId;
 
-    @Column(name = "last_name" , length = 255)
-    private String lastname;
+    @Column(length = 255, unique = true,nullable = false)
+    private String firstName;
 
-    @Column(name = "email_id" , length = 255, unique = true, nullable = false)
-    private String emailid;
+    @Column(length = 255)
+    private String lastName;
+
+    @Column(length = 255, unique = true, nullable = false)
+    private String emailId;
 
     @Column(nullable = false)
     private String password;
+
+    @Column(length = 255)
+    private String contactNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EmployeeStatus employeeStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    @JsonBackReference
+    private Department department;
 
 
 }

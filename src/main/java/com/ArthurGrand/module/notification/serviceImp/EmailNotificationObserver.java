@@ -1,6 +1,6 @@
 package com.ArthurGrand.module.notification.serviceImp;
 
-import com.ArthurGrand.dto.EmailDetailsDTO;
+import com.ArthurGrand.dto.EmailDetailsDto;
 import com.ArthurGrand.module.notification.events.NotificationEvent;
 import com.ArthurGrand.module.notification.service.EmailService;
 import com.ArthurGrand.module.notification.service.NotificationObserver;
@@ -17,7 +17,7 @@ public class EmailNotificationObserver implements NotificationObserver {
 
     @Override
     public void handle(NotificationEvent event) {
-        EmailDetailsDTO details = new EmailDetailsDTO();
+        EmailDetailsDto details = new EmailDetailsDto();
         details.setRecipient(event.getEmail());
         details.setSubject(event.getSubject());
         details.setMsgBody(event.getMessage());

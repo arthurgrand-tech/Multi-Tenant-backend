@@ -39,21 +39,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(tenantValidationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)  // Then add JWT filter
+                .addFilterBefore(tenantValidationFilter, UsernamePasswordAuthenticationFilter.class)  // Add tenant validation filter first
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1/auth/login",
-                                "/api/v1/tenants/**",
-                                "/api/v1/employee/**",
-                                "/api/v1/client/**",  // Add this line for client endpoints
+                                "/api/v1/auth/login","/api/v1/tenants/**","/api/v1/employee/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**",
+                                "/v3/api-docs/**",        // <- required
                                 "/api-docs/**",
                                 "/swagger-resources/**",
-                                "/webjars/**"
+                                "/webjars/**"// <- if using custom path
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
