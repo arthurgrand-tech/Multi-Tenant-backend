@@ -17,4 +17,5 @@ public class EmployeeViewDto {
     private String emailId;
     private String contactNumber;
     private EmployeeStatus employeeStatus;
+    private String timezone;
 }

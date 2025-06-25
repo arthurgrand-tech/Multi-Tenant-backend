@@ -1,5 +1,6 @@
 package com.ArthurGrand.module.employee.serviceImp;
 
+import com.ArthurGrand.admin.dto.UserSessionDto;
 import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.admin.tenants.service.TenantTimeService;
 import com.ArthurGrand.admin.tenants.serviceImp.TenantTimeServiceImp;
@@ -11,6 +12,7 @@ import com.ArthurGrand.module.employee.repository.EmployeeRepository;
 import com.ArthurGrand.module.employee.service.EmployeeService;
 import jakarta.annotation.PostConstruct;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class EmployeeServiceImp implements EmployeeService {
+
+    @Value("${default.timezone}")
+    private String defaultTimeZone;
 
     private final EmployeeRepository employeeRepo;
     private final ModelMapper modelMapper;
@@ -57,6 +62,8 @@ public class EmployeeServiceImp implements EmployeeService {
             emp.setPassword(pswEncode);
             emp.setEmployeeStatus(EmployeeStatus.ACTIVE);
             emp.setContactNumber("1234567890");
+            emp.setDelete(false);
+            emp.setTimezone(defaultTimeZone);
             employeeRepo.save(emp);
         } finally {
             TenantContext.clear(); // Clear to avoid leaking tenant context
@@ -68,7 +75,13 @@ public class EmployeeServiceImp implements EmployeeService {
     public void saveEmployee(EmployeeDto employeeDto) {
         Employee employee=new Employee();
         String pswEncode=passwordEncoder.encode(employeeDto.getPassword());
+        UserSessionDto userSession=TenantContext.getUserSession();
+        String timeZone=defaultTimeZone;
+        if(userSession != null){
+            timeZone=TenantContext.getUserSession().getTimezone();
+        }
         employeeDto.setPassword(pswEncode);
+        employeeDto.setTimezone(timeZone);
         modelMapper.map(employeeDto,employee);
         employeeRepo.save(employee);
     }
@@ -76,10 +89,11 @@ public class EmployeeServiceImp implements EmployeeService {
     @Override
     public Page<EmployeeViewDto> getAllEmployees(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Employee> employeePage=employeeRepo.findAll(pageable);
-        return employeePage.map(emp->{
-            EmployeeViewDto empView=new EmployeeViewDto();
-            modelMapper.map(emp,empView);
+        Page<Employee> employeePage = employeeRepo.findByIsDeleteFalse(pageable);
+
+        return employeePage.map(emp -> {
+            EmployeeViewDto empView = new EmployeeViewDto();
+            modelMapper.map(emp, empView);
             return empView;
         });
     }
@@ -103,10 +117,10 @@ public class EmployeeServiceImp implements EmployeeService {
 
     @Override
     public void deleteEmployee(Integer id) {
-        if (!employeeRepo.existsById(id)) {
-            throw new RuntimeException("Employee not found with ID: " + id);
-        }
-        employeeRepo.deleteById(id);
+        Employee employee = employeeRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + id));
+        employee.setDelete(true);
+        employeeRepo.save(employee);
     }
 
 }

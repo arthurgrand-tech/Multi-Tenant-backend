@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.TimeZone;
 
 @Data
 public class EmployeeDto {
@@ -32,5 +33,6 @@ public class EmployeeDto {
 
     @NotNull(message = "Employee status is required")
     private EmployeeStatus employeeStatus;
+    private String timezone;
 
 }

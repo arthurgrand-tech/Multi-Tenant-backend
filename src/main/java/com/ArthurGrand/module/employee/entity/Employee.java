@@ -39,9 +39,13 @@ public class Employee {
     @Column(nullable = false)
     private EmployeeStatus employeeStatus;
 
+    @Column(nullable = false)
+    private String timezone;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     @JsonBackReference
     private Department department;
 
+    private boolean isDelete = false;
 }
