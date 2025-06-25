@@ -1,0 +1,21 @@
+# === Java & Maven ===
+*.class
+*.jar
+*.war
+*.ear
+/target/
+
+# === IntelliJ IDEA ===
+.idea/
+*.iml
+/out/
+
+# === VS Code ===
+.vscode/
+
+# === Logs ===
+*.log
+
+# === OS-specific ===
+.DS_Store
+Thumbs.db
