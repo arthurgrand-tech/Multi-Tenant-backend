@@ -69,8 +69,6 @@ public class EmployeeServiceImp implements EmployeeService {
         Employee employee=new Employee();
         String pswEncode=passwordEncoder.encode(employeeDto.getPassword());
         employeeDto.setPassword(pswEncode);
-        String timezone=TenantContext.getUserSession().getTimezone();
-
         modelMapper.map(employeeDto,employee);
         employeeRepo.save(employee);
     }
