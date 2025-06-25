@@ -21,34 +21,31 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthFilter filter;
+    private final JwtAuthFilter jwtAuthFilter;
     private final CustomUserDetailsService customUserDetailsService;
     private final TenantValidationFilter tenantValidationFilter;
-    private final JwtAuthFilter jwtAuthFilter;
 
-    public SecurityConfig(JwtAuthFilter filter,
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CustomUserDetailsService customUserDetailsService,
-                          TenantValidationFilter tenantValidationFilter,
-                          JwtAuthFilter jwtAuthFilter){
-        this.filter=filter;
-        this.customUserDetailsService=customUserDetailsService;
-        this.tenantValidationFilter=tenantValidationFilter;
-        this.jwtAuthFilter=jwtAuthFilter;
+                          TenantValidationFilter tenantValidationFilter){
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.customUserDetailsService = customUserDetailsService;
+        this.tenantValidationFilter = tenantValidationFilter;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(tenantValidationFilter, UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
+                // CRITICAL: TenantValidationFilter MUST come FIRST
+                .addFilterBefore(tenantValidationFilter, UsernamePasswordAuthenticationFilter.class)
+                // THEN JWT filter comes after tenant validation
+                .addFilterAfter(jwtAuthFilter, TenantValidationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/tenants/**",
-                                "/api/v1/employee/**",
-                                "/api/v1/client/**",  // Add this line for client endpoints
-                                "/api/v1/payment/webhook",
+                                "/api/v1/payment/webhook",  // Only webhook is public
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
@@ -60,7 +57,6 @@ public class SecurityConfig {
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authProvider())
-                .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
@@ -72,16 +68,13 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    // Expose AuthenticationManager as a Spring Bean
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    // You can add your password encoder here too
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }
-
