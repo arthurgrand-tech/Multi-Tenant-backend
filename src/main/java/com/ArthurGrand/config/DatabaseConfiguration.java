@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
+import jakarta.annotation.PreDestroy;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,19 +70,20 @@ public class DatabaseConfiguration {
             config.setPassword(password);
             config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
-            // Connection pool settings
+            // FIXED: Connection pool settings to prevent leaks
             config.setMaximumPoolSize(10);
-            config.setMinimumIdle(2);
+            config.setMinimumIdle(3);
             config.setConnectionTimeout(30000);
-            config.setIdleTimeout(600000); // 10 minutes
-            config.setMaxLifetime(1800000); // 30 minutes
+            config.setIdleTimeout(300000); // 5 minutes
+            config.setMaxLifetime(1200000); // 20 minutes
             config.setLeakDetectionThreshold(60000); // 1 minute
+            config.setAutoCommit(true);
 
             // Connection validation
             config.setConnectionTestQuery("SELECT 1");
             config.setValidationTimeout(5000);
 
-            // Additional MySQL specific settings
+            // FIXED: Additional MySQL specific settings
             config.addDataSourceProperty("cachePrepStmts", "true");
             config.addDataSourceProperty("prepStmtCacheSize", "250");
             config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -92,6 +94,11 @@ public class DatabaseConfiguration {
             config.addDataSourceProperty("cacheServerConfiguration", "true");
             config.addDataSourceProperty("elideSetAutoCommits", "true");
             config.addDataSourceProperty("maintainTimeStats", "false");
+
+            // FIXED: Additional properties to prevent connection issues
+            config.addDataSourceProperty("allowPublicKeyRetrieval", "true");
+            config.addDataSourceProperty("useSSL", "false");
+            config.addDataSourceProperty("serverTimezone", "UTC");
 
             HikariDataSource dataSource = new HikariDataSource(config);
             dataSourceCache.put(cacheKey, dataSource);
@@ -185,5 +192,23 @@ public class DatabaseConfiguration {
 
     public DataSource getTenantDataSource(String databaseName) {
         return dataSourceCache.get(databaseName);
+    }
+
+    // FIXED: Proper cleanup on application shutdown
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("🧹 Cleaning up datasources...");
+        for (Map.Entry<String, DataSource> entry : dataSourceCache.entrySet()) {
+            try {
+                if (entry.getValue() instanceof HikariDataSource) {
+                    ((HikariDataSource) entry.getValue()).close();
+                    System.out.println("✅ Closed datasource: " + entry.getKey());
+                }
+            } catch (Exception e) {
+                System.err.println("❌ Failed to close datasource: " + entry.getKey());
+                e.printStackTrace();
+            }
+        }
+        dataSourceCache.clear();
     }
 }
