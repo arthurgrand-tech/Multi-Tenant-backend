@@ -1,10 +1,13 @@
 package com.ArthurGrand.dto;
 
 import com.ArthurGrand.common.enums.EmployeeStatus;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.time.Instant;
 
 @Data
 public class EmployeeDto {
@@ -29,4 +32,8 @@ public class EmployeeDto {
 
     @NotNull(message = "Employee status is required")
     private EmployeeStatus employeeStatus;
+
+    private String timezone;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

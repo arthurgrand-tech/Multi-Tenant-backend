@@ -1,10 +1,14 @@
 package com.ArthurGrand.module.employee.entity;
 
+import com.ArthurGrand.admin.dto.UserSessionDto;
+import com.ArthurGrand.admin.tenants.context.TenantContext;
 import com.ArthurGrand.common.enums.EmployeeStatus;
 import com.ArthurGrand.module.department.entity.Department;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.time.Instant;
 
 @Entity
 @Data
@@ -35,10 +39,19 @@ public class Employee {
     @Column(nullable = false)
     private EmployeeStatus employeeStatus;
 
+    @Column(length = 100)
+    private String timezone;
+
+    @Column(updatable = false,nullable = false)
+    private Instant createdAt;
+
+    @Column(nullable = true)
+    private Instant updatedAt;
+
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     @JsonBackReference
     private Department department;
-
 
 }

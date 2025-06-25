@@ -1,21 +1,10 @@
-# === Java & Maven ===
+# === Maven Build Directory ===
+/target/
+
+# === Java Class Files ===
 *.class
+
+# === Package Files ===
 *.jar
 *.war
 *.ear
-/target/
-
-# === IntelliJ IDEA ===
-.idea/
-*.iml
-/out/
-
-# === VS Code ===
-.vscode/
-
-# === Logs ===
-*.log
-
-# === OS-specific ===
-.DS_Store
-Thumbs.db

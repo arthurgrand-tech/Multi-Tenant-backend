@@ -1,6 +1,8 @@
 package com.ArthurGrand.module.employee.serviceImp;
 
 import com.ArthurGrand.admin.tenants.context.TenantContext;
+import com.ArthurGrand.admin.tenants.service.TenantTimeService;
+import com.ArthurGrand.admin.tenants.serviceImp.TenantTimeServiceImp;
 import com.ArthurGrand.common.enums.EmployeeStatus;
 import com.ArthurGrand.dto.EmployeeDto;
 import com.ArthurGrand.dto.EmployeeViewDto;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,12 +28,15 @@ public class EmployeeServiceImp implements EmployeeService {
     private final EmployeeRepository employeeRepo;
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TenantTimeService tenantTimeService;
     public EmployeeServiceImp(EmployeeRepository employeeRepo,
                               ModelMapper modelMapper,
-                              PasswordEncoder passwordEncoder){
+                              PasswordEncoder passwordEncoder,
+                              TenantTimeService tenantTimeService){
         this.employeeRepo=employeeRepo;
         this.modelMapper=modelMapper;
         this.passwordEncoder=passwordEncoder;
+        this.tenantTimeService=tenantTimeService;
     }
     @PostConstruct
     public void saveDefaultEmployee(){
@@ -41,6 +47,8 @@ public class EmployeeServiceImp implements EmployeeService {
             if(!empOpt.isEmpty()){
                 return;
             }
+            String timezone=TenantContext.getUserSession().getTimezone();
+
             Employee emp = new Employee();
             emp.setEmployeeId("AGT000");
             emp.setFirstName("Super");
@@ -50,6 +58,11 @@ public class EmployeeServiceImp implements EmployeeService {
             emp.setPassword(pswEncode);
             emp.setEmployeeStatus(EmployeeStatus.ACTIVE);
             emp.setContactNumber("1234567890");
+
+            emp.setTimezone(timezone);
+            emp.setCreatedAt(tenantTimeService.now(timezone));
+            emp.setUpdatedAt(null);
+
             employeeRepo.save(emp);
         } finally {
             TenantContext.clear(); // Clear to avoid leaking tenant context
@@ -62,6 +75,11 @@ public class EmployeeServiceImp implements EmployeeService {
         Employee employee=new Employee();
         String pswEncode=passwordEncoder.encode(employeeDto.getPassword());
         employeeDto.setPassword(pswEncode);
+        String timezone=TenantContext.getUserSession().getTimezone();
+        employee.setTimezone(timezone);
+        employee.setCreatedAt(tenantTimeService.now(timezone));
+        employee.setUpdatedAt(null);
+
         modelMapper.map(employeeDto,employee);
         employeeRepo.save(employee);
     }
@@ -88,6 +106,8 @@ public class EmployeeServiceImp implements EmployeeService {
     public String updateEmployee(Integer id, EmployeeDto employeeDto) {
         Employee existing = employeeRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + id));
+        String timezone=TenantContext.getUserSession().getTimezone();
+        employeeDto.setUpdatedAt(tenantTimeService.now(timezone));
         modelMapper.map(employeeDto,existing);
         employeeRepo.save(existing);
         return "Employee updated with ID: " + id;
