@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.time.Instant;
+
 @Data
 public class EmployeeViewDto {
     private Integer id;
@@ -15,4 +17,5 @@ public class EmployeeViewDto {
     private String emailId;
     private String contactNumber;
     private EmployeeStatus employeeStatus;
+    private String timezone;
 }

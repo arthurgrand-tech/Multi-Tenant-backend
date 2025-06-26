@@ -39,8 +39,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)  // Then add JWT filter
                 .addFilterBefore(tenantValidationFilter, UsernamePasswordAuthenticationFilter.class)  // Add tenant validation filter first
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)  // Then add JWT filter
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -80,4 +80,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-

@@ -46,7 +46,7 @@ public class DepartmentServiceImp implements DepartmentService {
         Department department = new Department();
         department.setDepartmentName(departmentDto.getDepartmentName());
         department.setDepartmentLead(departmentDto.getDepartmentLead());
-        department.setIsDeleted(false);
+        department.setDeleted(false);
         Department savedDepartment = departmentRepo.save(department);
 
         for (Employee employee : employeeSet) {
@@ -67,7 +67,7 @@ public class DepartmentServiceImp implements DepartmentService {
         Department department = deptOpt.get();
         DepartmentViewDto dto = new DepartmentViewDto();
 
-        List<Employee> employeeList = employeeRepo.findByDepartmentId(deptOpt.get().getId());
+        List<Employee> employeeList = employeeRepo.findByDepartmentIdAndIsDeleteFalse(deptOpt.get().getId());
         Set<EmployeeViewDto> employeeDtoSet = employeeList.stream()
                 .map(emp -> {
                     EmployeeViewDto empDto = new EmployeeViewDto();
@@ -94,7 +94,7 @@ public class DepartmentServiceImp implements DepartmentService {
             dto.setDepartmentName(dept.getDepartmentName());
             dto.setDepartmentLead(dept.getDepartmentLead());
 
-            List<Employee> employeeList = employeeRepo.findByDepartmentId(dept.getId());
+            List<Employee> employeeList = employeeRepo.findByDepartmentIdAndIsDeleteFalse(dept.getId());
 
             Set<EmployeeViewDto> employeeDtoSet = employeeList.stream()
                     .map(emp -> {

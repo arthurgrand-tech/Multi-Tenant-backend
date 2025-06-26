@@ -29,6 +29,5 @@ public class Department {
     @JsonManagedReference
     private Set<Employee> employees = new HashSet<>();
 
-    @Column(name = "is_deleted")
-    private Boolean isDeleted = false;
+    private boolean isDeleted = false;
 }

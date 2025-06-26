@@ -4,6 +4,9 @@ import com.ArthurGrand.admin.dto.TenantRegisterDto;
 import com.ArthurGrand.admin.dto.TenantResponseDto;
 import com.ArthurGrand.admin.dto.TenantUpdateDto;
 import com.ArthurGrand.admin.tenants.service.TenantService;
+import com.ArthurGrand.dto.ApiResponse;
+import org.apache.poi.ss.formula.functions.T;
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -59,6 +62,17 @@ public class TenantController {
             return ResponseEntity.status(HttpStatus.OK).body("Tenant updated successful.");
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong.");
+        }
+    }
+
+    @PostMapping("/migrateTableToTenants")
+    public ResponseEntity<ApiResponse<Boolean>> migrateTableToAllTenant(){
+        try {
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ApiResponse<>("Migrate updated table to all tenants",true));
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("Something went wrong.",false));
         }
     }
 
