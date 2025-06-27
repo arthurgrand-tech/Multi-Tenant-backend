@@ -39,13 +39,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDto request) {
         try {
-            Optional<Employee> employeeOpt=employeeRepository.findByEmailId(request.getEmailid());
+            Optional<Employee> employeeOpt=employeeRepository.findByEmailId(request.getEmailId());
             if(employeeOpt.isEmpty()){
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Email not found");
             }
             Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmailid(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.getEmailId(), request.getPassword())
             );
 
             final String jwt = jwtUtil.generateToken(employeeOpt.get());
